@@ -26,14 +26,62 @@ export type ShapeDesc =
   | { type: "flange"; hubR: number; hubH: number; plateR: number; plateT: number; pcd: number; boltR: number }
   | { type: "blade"; chord: number; span: number; twist: number; thickness: number }
   | { type: "box"; size: [number, number, number] }
-  | { type: "csg_union"; a: ShapeDesc; b: ShapeDesc; offsetA?: [number, number, number]; offsetB?: [number, number, number] };
+  | { type: "csg_union"; a: ShapeDesc; b: ShapeDesc; offsetA?: [number, number, number]; offsetB?: [number, number, number] }
+  | { type: "impeller"; hubR: number; hubH: number; bladeCount: number; chord: number; span: number; twist: number; thickness: number; shroudR?: number }
+  | { type: "gear"; teeth: number; module: number; thickness: number; boreR: number; toothH?: number; helix?: number; internal?: boolean }
+  | { type: "planetary_gearset"; ringTeeth: number; sunTeeth: number; planetTeeth: number; module: number; thickness: number; boreR: number };
 
-export function CadViewer({ shape, height = 360, label }: { shape: ShapeDesc; height?: number; label?: string }) {
+// Per-agent visualisation degradation. Applied to the canonical reference
+// shape so each agent's tile shows what its scoring profile actually means
+// in geometry terms — faceted tessellation for mesh-only models, random
+// non-manifold face removal, dimension-error scale, missing features, or a
+// "no manifold solid produced" failure tile.
+export type Degrade = {
+  /** 0..1 fraction of triangles to randomly drop. Creates visible holes. */
+  nonManifold?: number;
+  /** Per-axis scale jitter applied to the whole mesh (named-dim error). */
+  scale?: [number, number, number];
+  /** "mesh-only" → flat-shaded faceted look; "csg" → faceted but cleaner. */
+  shading?: "smooth" | "csg" | "facets";
+  /** Drop random sub-features (bores, segments) at this rate. */
+  missingFeatures?: number;
+  /** Replace the whole shape with its bounding-box approximation (low-fi). */
+  bboxOnly?: boolean;
+  /** If true, render a "no manifold solid produced" tile instead. */
+  failed?: boolean;
+  /** Mesh material colour. */
+  color?: number;
+  /** Random seed so degradation is deterministic per-agent-per-task. */
+  seed?: number;
+};
+
+function mulberry32(seed: number) {
+  return function () {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+export function CadViewer({
+  shape,
+  height = 360,
+  label,
+  degrade,
+}: {
+  shape: ShapeDesc;
+  height?: number;
+  label?: string;
+  degrade?: Degrade;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const [info, setInfo] = useState<{ tris: number; bbox: [number, number, number] } | null>(null);
 
   useEffect(() => {
     if (!ref.current) return;
+    if (degrade?.failed) return; // failure tile is rendered in JSX below
     const el = ref.current;
     const w = el.clientWidth;
     const h = height;
@@ -47,19 +95,25 @@ export function CadViewer({ shape, height = 360, label }: { shape: ShapeDesc; he
     renderer.shadowMap.enabled = true;
     el.appendChild(renderer.domElement);
 
-    const mesh = buildMesh(shape);
+    const mesh = buildMesh(shape, degrade);
     scene.add(mesh);
 
-    // Wireframe overlay to read topology cleanly.
-    const wire = new THREE.LineSegments(
-      new THREE.EdgesGeometry((mesh.children[0] as THREE.Mesh).geometry, 18),
-      new THREE.LineBasicMaterial({ color: new THREE.Color(0x111111), transparent: true, opacity: 0.35 })
-    );
-    mesh.add(wire);
+    // Wireframe overlay to read topology cleanly. Skip on failure / bbox-only.
+    if (!degrade?.bboxOnly) {
+      const wire = new THREE.LineSegments(
+        new THREE.EdgesGeometry((mesh.children[0] as THREE.Mesh).geometry, 18),
+        new THREE.LineBasicMaterial({
+          color: new THREE.Color(0x222222),
+          transparent: true,
+          opacity: degrade?.shading === "facets" ? 0.45 : 0.32,
+        })
+      );
+      mesh.add(wire);
+    }
 
     // Ground grid.
-    const grid = new THREE.GridHelper(400, 40, 0x999999, 0xdddddd);
-    (grid.material as THREE.Material).opacity = 0.4;
+    const grid = new THREE.GridHelper(400, 40, 0x9c9c9c, 0xd6d3c7);
+    (grid.material as THREE.Material).opacity = 0.45;
     (grid.material as THREE.Material).transparent = true;
     scene.add(grid);
 
@@ -153,7 +207,22 @@ export function CadViewer({ shape, height = 360, label }: { shape: ShapeDesc; he
       renderer.dispose();
       el.removeChild(renderer.domElement);
     };
-  }, [shape, height]);
+  }, [shape, height, degrade]);
+
+  if (degrade?.failed) {
+    return (
+      <div
+        className="border rounded-md bg-[var(--card)] overflow-hidden relative flex items-center justify-center"
+        style={{ height }}
+      >
+        <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: "repeating-linear-gradient(45deg, transparent 0 6px, var(--bad) 6px 7px)" }} />
+        <div className="relative text-center px-4">
+          <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--bad)] mb-1">no manifold solid produced</div>
+          <div className="font-mono text-[10px] text-[var(--muted)] leading-snug">{label ?? "agent run failed validity gate"}</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="border rounded-md bg-[var(--card)] overflow-hidden relative">
@@ -172,10 +241,47 @@ export function CadViewer({ shape, height = 360, label }: { shape: ShapeDesc; he
 
 // ---- mesh construction -----------------------------------------------
 
-function buildMesh(shape: ShapeDesc): THREE.Group {
+function buildMesh(shape: ShapeDesc, degrade?: Degrade): THREE.Group {
   const g = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({ color: 0xc8c8c8, roughness: 0.55, metalness: 0.15, flatShading: false });
-  const geo = buildGeometry(shape);
+  const flat = degrade?.shading === "facets" || degrade?.shading === "csg";
+  const baseColor = degrade?.color ?? 0xc8c8c8;
+  const mat = new THREE.MeshStandardMaterial({
+    color: baseColor,
+    roughness: degrade?.shading === "facets" ? 0.85 : 0.55,
+    metalness: degrade?.shading === "facets" ? 0.05 : 0.15,
+    flatShading: flat,
+    side: degrade?.nonManifold ? THREE.DoubleSide : THREE.FrontSide,
+  });
+
+  let geo: THREE.BufferGeometry;
+  if (degrade?.bboxOnly) {
+    // Replace the shape with a coarse bbox approximation — what a model that
+    // missed the spec entirely returns: roughly the right volume, none of the
+    // features.
+    const ref = buildGeometry(shape);
+    ref.computeBoundingBox();
+    const bb = ref.boundingBox!;
+    const sx = (bb.max.x - bb.min.x) || 1;
+    const sy = (bb.max.y - bb.min.y) || 1;
+    const sz = (bb.max.z - bb.min.z) || 1;
+    geo = new THREE.BoxGeometry(sx * 0.95, sy * 0.95, sz * 0.95, 1, 1, 1);
+    geo.translate((bb.max.x + bb.min.x) / 2, (bb.max.y + bb.min.y) / 2, (bb.max.z + bb.min.z) / 2);
+  } else {
+    geo = buildGeometry(shape, degrade);
+  }
+
+  if (degrade?.scale) {
+    geo.scale(degrade.scale[0], degrade.scale[1], degrade.scale[2]);
+  }
+
+  if (degrade?.nonManifold && degrade.nonManifold > 0) {
+    geo = dropRandomTriangles(geo, degrade.nonManifold, degrade.seed ?? 1);
+  }
+
+  if (flat) {
+    geo.computeVertexNormals();
+  }
+
   const m = new THREE.Mesh(geo, mat);
   m.castShadow = true;
   m.receiveShadow = true;
@@ -183,20 +289,48 @@ function buildMesh(shape: ShapeDesc): THREE.Group {
   return g;
 }
 
-function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
+function dropRandomTriangles(g: THREE.BufferGeometry, fraction: number, seed: number): THREE.BufferGeometry {
+  const ng = g.index ? g.toNonIndexed() : g;
+  const pos = ng.attributes.position.array as Float32Array;
+  const triCount = pos.length / 9;
+  const keep = Math.max(8, Math.floor(triCount * (1 - fraction)));
+  const rand = mulberry32(seed * 9973);
+  // Fisher-Yates partial — pick `keep` indices.
+  const indices = new Array(triCount);
+  for (let i = 0; i < triCount; i++) indices[i] = i;
+  for (let i = 0; i < keep; i++) {
+    const j = i + Math.floor(rand() * (triCount - i));
+    const t = indices[i]; indices[i] = indices[j]; indices[j] = t;
+  }
+  const out = new Float32Array(keep * 9);
+  for (let i = 0; i < keep; i++) {
+    const src = indices[i] * 9;
+    for (let k = 0; k < 9; k++) out[i * 9 + k] = pos[src + k];
+  }
+  const dst = new THREE.BufferGeometry();
+  dst.setAttribute("position", new THREE.Float32BufferAttribute(out, 3));
+  dst.computeVertexNormals();
+  return dst;
+}
+
+function buildGeometry(shape: ShapeDesc, degrade?: Degrade): THREE.BufferGeometry {
+  // Tessellation multiplier — mesh-only / faceted agents look coarse.
+  const tess = degrade?.shading === "facets" ? 0.18 : degrade?.shading === "csg" ? 0.45 : 1;
+  const segs = (n: number) => Math.max(6, Math.round(n * tess));
+  const featureRand = mulberry32((degrade?.seed ?? 1) * 7919);
+  const keep = (rate: number) => featureRand() >= rate;
   switch (shape.type) {
     case "box": {
       return new THREE.BoxGeometry(...shape.size);
     }
     case "hollow_cylinder": {
       // Built as a single open-ended geometry by merging outer cylinder + inner cylinder + two annulus rings.
-      const segs = 64;
-      const outer = new THREE.CylinderGeometry(shape.outerR, shape.outerR, shape.height, segs, 1, true);
-      const inner = new THREE.CylinderGeometry(shape.innerR, shape.innerR, shape.height, segs, 1, true);
-      // flip inner normals
+      const s = segs(64);
+      const outer = new THREE.CylinderGeometry(shape.outerR, shape.outerR, shape.height, s, 1, true);
+      const inner = new THREE.CylinderGeometry(shape.innerR, shape.innerR, shape.height, s, 1, true);
       flipNormals(inner);
-      const top = ring(shape.outerR, shape.innerR, segs, shape.height / 2);
-      const bot = ring(shape.outerR, shape.innerR, segs, -shape.height / 2);
+      const top = ring(shape.outerR, shape.innerR, s, shape.height / 2);
+      const bot = ring(shape.outerR, shape.innerR, s, -shape.height / 2);
       flipNormals(bot);
       return mergeGeoms([outer, inner, top, bot]);
     }
@@ -214,15 +348,16 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       return new THREE.ExtrudeGeometry(shape2d, { depth: shape.height, bevelEnabled: !!shape.filletR, bevelSize: shape.filletR ?? 0, bevelThickness: shape.filletR ?? 0, bevelSegments: 4 });
     }
     case "lattice_block": {
-      // Approximate visualization: solid block with bored cylindrical features rendered as additional inner walls.
       const block = new THREE.BoxGeometry(shape.size, shape.size, shape.size);
       const geos: THREE.BufferGeometry[] = [block];
       const start = -((shape.n - 1) * shape.pitch) / 2;
+      const skip = degrade?.missingFeatures ?? 0;
       for (let i = 0; i < shape.n; i++) {
         for (let j = 0; j < shape.n; j++) {
+          if (skip > 0 && !keep(skip)) continue;
           const x = start + i * shape.pitch;
           const y = start + j * shape.pitch;
-          const cyl = new THREE.CylinderGeometry(shape.holeD / 2, shape.holeD / 2, shape.size + 0.01, 24, 1, true);
+          const cyl = new THREE.CylinderGeometry(shape.holeD / 2, shape.holeD / 2, shape.size + 0.01, segs(24), 1, true);
           cyl.rotateX(Math.PI / 2);
           cyl.translate(x, y, 0);
           flipNormals(cyl);
@@ -241,7 +376,7 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       const ver = new THREE.BoxGeometry(t, b, 30);
       ver.translate(t / 2, b / 2, 0);
       // hole through long leg
-      const hole = new THREE.CylinderGeometry(shape.holeD / 2, shape.holeD / 2, t * 1.1, 32, 1, true);
+      const hole = new THREE.CylinderGeometry(shape.holeD / 2, shape.holeD / 2, t * 1.1, segs(32), 1, true);
       hole.rotateZ(Math.PI / 2);
       hole.translate(a - 30, t / 2, 0);
       flipNormals(hole);
@@ -254,7 +389,7 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       const geos: THREE.BufferGeometry[] = [];
       let z = 0;
       for (const seg of shape.segments) {
-        const c = new THREE.CylinderGeometry(seg.d / 2, seg.d / 2, seg.l, 48);
+        const c = new THREE.CylinderGeometry(seg.d / 2, seg.d / 2, seg.l, segs(48));
         c.rotateZ(Math.PI / 2);
         c.translate(z + seg.l / 2, 0, 0);
         geos.push(c);
@@ -263,13 +398,15 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       return mergeGeoms(geos);
     }
     case "carrier_plate": {
-      const geos: THREE.BufferGeometry[] = [new THREE.CylinderGeometry(shape.r, shape.r, shape.thickness, 96)];
+      const skip = degrade?.missingFeatures ?? 0;
+      const geos: THREE.BufferGeometry[] = [new THREE.CylinderGeometry(shape.r, shape.r, shape.thickness, segs(96))];
       for (const b of shape.bores) {
         for (let i = 0; i < b.n; i++) {
+          if (skip > 0 && !keep(skip)) continue;
           const ang = (i / b.n) * Math.PI * 2 + (b.phase ?? 0);
           const cx = (b.pcd / 2) * Math.cos(ang);
           const cy = (b.pcd / 2) * Math.sin(ang);
-          const c = new THREE.CylinderGeometry(b.r, b.r, shape.thickness * 1.1, 32, 1, true);
+          const c = new THREE.CylinderGeometry(b.r, b.r, shape.thickness * 1.1, segs(32), 1, true);
           c.translate(cx, 0, cy);
           flipNormals(c);
           geos.push(c);
@@ -278,7 +415,7 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       return mergeGeoms(geos);
     }
     case "pin": {
-      const c = new THREE.CylinderGeometry(shape.d / 2, shape.d / 2, shape.l, 48);
+      const c = new THREE.CylinderGeometry(shape.d / 2, shape.d / 2, shape.l, segs(48));
       c.rotateZ(Math.PI / 2);
       return c;
     }
@@ -299,8 +436,10 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       const geos: THREE.BufferGeometry[] = [outer, inner];
       const cornerX = (shape.w - 4 * shape.wall) / 2;
       const cornerZ = (shape.d - 4 * shape.wall) / 2;
+      const skip = degrade?.missingFeatures ?? 0;
       for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
-        const boss = new THREE.CylinderGeometry(shape.bossR, shape.bossR, shape.h - shape.wall, 24);
+        if (skip > 0 && !keep(skip)) continue;
+        const boss = new THREE.CylinderGeometry(shape.bossR, shape.bossR, shape.h - shape.wall, segs(24));
         boss.translate(sx * cornerX, -shape.wall / 2, sz * cornerZ);
         geos.push(boss);
       }
@@ -320,24 +459,26 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
         [shape.cupR * 0.4, 0],
         [shape.cupR, shape.cupH * 0.6],
         [shape.cupR * 0.95, shape.cupH],
-      ], 64);
+      ], segs(64));
       cup.translate(0, shape.stemH + shape.baseT, 0);
-      const stem = new THREE.CylinderGeometry(shape.stemR, shape.stemR, shape.stemH, 32);
+      const stem = new THREE.CylinderGeometry(shape.stemR, shape.stemR, shape.stemH, segs(32));
       stem.translate(0, shape.stemH / 2 + shape.baseT, 0);
-      const base = new THREE.CylinderGeometry(shape.baseR, shape.baseR, shape.baseT, 48);
+      const base = new THREE.CylinderGeometry(shape.baseR, shape.baseR, shape.baseT, segs(48));
       base.translate(0, shape.baseT / 2, 0);
       return mergeGeoms([cup, stem, base]);
     }
     case "flange": {
-      const hub = new THREE.CylinderGeometry(shape.hubR, shape.hubR, shape.hubH, 64);
-      const plate = new THREE.CylinderGeometry(shape.plateR, shape.plateR, shape.plateT, 96);
+      const hub = new THREE.CylinderGeometry(shape.hubR, shape.hubR, shape.hubH, segs(64));
+      const plate = new THREE.CylinderGeometry(shape.plateR, shape.plateR, shape.plateT, segs(96));
       plate.translate(0, -shape.hubH / 2 + shape.plateT / 2, 0);
       const geos: THREE.BufferGeometry[] = [hub, plate];
+      const skip = degrade?.missingFeatures ?? 0;
       for (let i = 0; i < 6; i++) {
+        if (skip > 0 && !keep(skip)) continue;
         const ang = (i / 6) * Math.PI * 2;
         const x = (shape.pcd / 2) * Math.cos(ang);
         const z = (shape.pcd / 2) * Math.sin(ang);
-        const bolt = new THREE.CylinderGeometry(shape.boltR, shape.boltR, shape.plateT * 1.1, 24, 1, true);
+        const bolt = new THREE.CylinderGeometry(shape.boltR, shape.boltR, shape.plateT * 1.1, segs(24), 1, true);
         bolt.translate(x, -shape.hubH / 2 + shape.plateT / 2, z);
         flipNormals(bolt);
         geos.push(bolt);
@@ -382,13 +523,179 @@ function buildGeometry(shape: ShapeDesc): THREE.BufferGeometry {
       return loft(sections);
     }
     case "csg_union": {
-      const a = buildGeometry(shape.a);
-      const b = buildGeometry(shape.b);
+      const a = buildGeometry(shape.a, degrade);
+      const b = buildGeometry(shape.b, degrade);
       if (shape.offsetA) a.translate(...shape.offsetA);
       if (shape.offsetB) b.translate(...shape.offsetB);
       return mergeGeoms([a, b]);
     }
+    case "impeller": {
+      // Hub (cylinder along Y) + N twisted NACA-ish blades emanating
+      // radially. Optional shroud disc above the blades.
+      const skip = degrade?.missingFeatures ?? 0;
+      const hub = new THREE.CylinderGeometry(shape.hubR, shape.hubR * 0.95, shape.hubH, segs(48));
+      hub.translate(0, shape.hubH / 2, 0);
+      const geos: THREE.BufferGeometry[] = [hub];
+
+      const N = shape.bladeCount;
+      for (let k = 0; k < N; k++) {
+        if (skip > 0 && !keep(skip)) continue;
+        const bladeSec: THREE.Vector3[][] = [];
+        const M = Math.max(8, segs(24));
+        const Ndiv = Math.max(8, segs(20));
+        for (let s = 0; s <= M; s++) {
+          const t = s / M;
+          const tw = t * shape.twist * (Math.PI / 180);
+          const sec: THREE.Vector3[] = [];
+          for (let i = 0; i <= Ndiv; i++) {
+            const u = i / Ndiv;
+            const yt = (0.594 * Math.sqrt(u) - 0.126 * u - 0.353 * u * u + 0.292 * u * u * u - 0.107 * u * u * u * u) * shape.thickness;
+            const x = (u - 0.5) * shape.chord;
+            const yPlus = yt;
+            const xrU = x * Math.cos(tw) - yPlus * Math.sin(tw);
+            const yrU = x * Math.sin(tw) + yPlus * Math.cos(tw);
+            sec.push(new THREE.Vector3(xrU, yrU, shape.hubR + t * shape.span));
+          }
+          for (let i = Ndiv; i >= 0; i--) {
+            const u = i / Ndiv;
+            const yt = (0.594 * Math.sqrt(u) - 0.126 * u - 0.353 * u * u + 0.292 * u * u * u - 0.107 * u * u * u * u) * shape.thickness;
+            const x = (u - 0.5) * shape.chord;
+            const yMinus = -yt;
+            const xrL = x * Math.cos(tw) - yMinus * Math.sin(tw);
+            const yrL = x * Math.sin(tw) + yMinus * Math.cos(tw);
+            sec.push(new THREE.Vector3(xrL, yrL, shape.hubR + t * shape.span));
+          }
+          bladeSec.push(sec);
+        }
+        const bladeGeo = loft(bladeSec);
+        // Rotate the blade so its span is along +X, then orbit it about Y by 2πk/N.
+        bladeGeo.rotateX(Math.PI / 2);
+        // Lift halfway up the hub so the blades attach to the hub side.
+        bladeGeo.translate(0, shape.hubH * 0.55, 0);
+        bladeGeo.rotateY((k / N) * Math.PI * 2);
+        geos.push(bladeGeo);
+      }
+      if (shape.shroudR) {
+        const shroud = new THREE.CylinderGeometry(shape.shroudR, shape.shroudR, shape.thickness * 0.6, segs(64));
+        shroud.translate(0, shape.hubH + shape.thickness * 0.3, 0);
+        geos.push(shroud);
+      }
+      return mergeGeoms(geos);
+    }
+    case "gear": {
+      return gearGeometry(shape.teeth, shape.module, shape.thickness, shape.boreR, segs, shape.toothH, shape.internal);
+    }
+    case "planetary_gearset": {
+      const m = shape.module;
+      const sunR = (m * shape.sunTeeth) / 2;
+      const planetR = (m * shape.planetTeeth) / 2;
+      const ringR = (m * shape.ringTeeth) / 2;
+      const sunGeo = gearGeometry(shape.sunTeeth, m, shape.thickness, shape.boreR, segs);
+      const ring = ringGeometry(shape.ringTeeth, m, shape.thickness, segs);
+      const orbit = sunR + planetR;
+      const planets: THREE.BufferGeometry[] = [];
+      for (let p = 0; p < 3; p++) {
+        const ang = (p / 3) * Math.PI * 2;
+        const pg = gearGeometry(shape.planetTeeth, m, shape.thickness, m * 0.6, segs);
+        // align tooth phase so planets visually mesh (not metrologically exact, but close).
+        pg.rotateZ(ang * (shape.sunTeeth / shape.planetTeeth));
+        pg.translate(orbit * Math.cos(ang), orbit * Math.sin(ang), 0);
+        planets.push(pg);
+      }
+      // small carrier plate behind everything for context
+      const carrier = new THREE.CylinderGeometry(ringR + m, ringR + m, shape.thickness * 0.3, segs(96));
+      carrier.rotateX(Math.PI / 2);
+      carrier.translate(0, 0, -shape.thickness * 0.65);
+      return mergeGeoms([carrier, ring, sunGeo, ...planets]);
+    }
   }
+}
+
+// Toothed cylindrical gear (extruded). `internal=true` builds a ring gear
+// (teeth pointing inward); we instead build that via `ringGeometry` below.
+function gearGeometry(
+  teeth: number,
+  module_: number,
+  thickness: number,
+  boreR: number,
+  segs: (n: number) => number,
+  toothH?: number,
+  _internal?: boolean,
+): THREE.BufferGeometry {
+  const pitchR = (module_ * teeth) / 2;
+  const addendum = toothH ?? module_;
+  const dedendum = module_ * 0.25;
+  const tipR = pitchR + addendum;
+  const rootR = pitchR - dedendum;
+  const s = new THREE.Shape();
+  const half = Math.PI / teeth;
+  const flank = half * 0.55;          // tooth flank width (radians)
+  for (let i = 0; i < teeth; i++) {
+    const c = (i / teeth) * Math.PI * 2;
+    // four points per tooth: root-left, tip-left, tip-right, root-right
+    const angs: [number, number][] = [
+      [c - half, rootR],
+      [c - flank, tipR],
+      [c + flank, tipR],
+      [c + half, rootR],
+    ];
+    for (let j = 0; j < 4; j++) {
+      const [a, r] = angs[j];
+      const x = r * Math.cos(a);
+      const y = r * Math.sin(a);
+      if (i === 0 && j === 0) s.moveTo(x, y);
+      else s.lineTo(x, y);
+    }
+  }
+  s.closePath();
+  if (boreR > 0) {
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
+    s.holes.push(hole);
+  }
+  const g = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: segs(48) });
+  g.translate(0, 0, -thickness / 2);
+  return g;
+}
+
+// Internal ring gear: outer disc with teeth pointing inward.
+function ringGeometry(teeth: number, module_: number, thickness: number, segs: (n: number) => number): THREE.BufferGeometry {
+  const pitchR = (module_ * teeth) / 2;
+  const addendum = module_;
+  const dedendum = module_ * 0.4;
+  const tipR = pitchR - addendum;
+  const rootR = pitchR + dedendum;
+  const outerR = rootR + module_ * 1.2;
+
+  const outline = new THREE.Shape();
+  outline.absarc(0, 0, outerR, 0, Math.PI * 2, false);
+
+  const inner = new THREE.Path();
+  const half = Math.PI / teeth;
+  const flank = half * 0.55;
+  // Build internal teeth path counter-clockwise so it acts as a hole.
+  for (let i = 0; i < teeth; i++) {
+    const c = (i / teeth) * Math.PI * 2;
+    const angs: [number, number][] = [
+      [c - half, rootR],
+      [c - flank, tipR],
+      [c + flank, tipR],
+      [c + half, rootR],
+    ];
+    for (let j = 0; j < 4; j++) {
+      const [a, r] = angs[j];
+      const x = r * Math.cos(a);
+      const y = r * Math.sin(a);
+      if (i === 0 && j === 0) inner.moveTo(x, y);
+      else inner.lineTo(x, y);
+    }
+  }
+  inner.closePath();
+  outline.holes.push(inner);
+
+  const g = new THREE.ExtrudeGeometry(outline, { depth: thickness, bevelEnabled: false, curveSegments: segs(96) });
+  g.translate(0, 0, -thickness / 2);
+  return g;
 }
 
 function ring(rOut: number, rIn: number, segs: number, y: number) {

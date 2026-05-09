@@ -8,6 +8,7 @@ import { TASK_SHAPES } from "@/lib/data/shapes";
 import { CadViewer } from "@/components/CadViewer";
 import { MetricCell } from "@/components/MetricCell";
 import { METRICS } from "@/lib/data/metrics";
+import { degradeForAgent, brepFidelityForAgent } from "@/lib/data/agent-degrade";
 
 export function generateStaticParams() {
   return TASKS.map((t) => ({ id: t.id }));
@@ -27,24 +28,28 @@ export default async function TaskDetail({ params }: { params: Promise<{ id: str
   }).sort((x, y) => ((y.r.metrics.vol_iou as number) ?? 0) - ((x.r.metrics.vol_iou as number) ?? 0));
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-2">
-        <Link href="/tasks" className="text-xs text-[var(--muted)] hover:underline underline-offset-4">← all tasks</Link>
-        <div className="flex items-baseline justify-between flex-wrap gap-3">
-          <div>
-            <div className="font-mono text-xs text-[var(--muted)]">{task.id} · <Link href={`/categories/${cat.id}`} className="hover:underline underline-offset-4">{cat.name}</Link> · difficulty {task.difficulty}/5</div>
-            <h1 className="text-2xl tracking-tight">{task.title}</h1>
+    <div className="space-y-12">
+      <header className="space-y-3 border-b pb-8">
+        <Link href="/tasks" className="text-[11px] font-mono link">← all tasks</Link>
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div className="space-y-2">
+            <div className="eyebrow">
+              {task.id} · <Link href={`/categories/${cat.id}`} className="link">{cat.name}</Link> · difficulty {task.difficulty}/5
+            </div>
+            <h1 className="font-serif text-[36px] md:text-[42px] leading-[1.05] tracking-tight">
+              {task.title}
+            </h1>
           </div>
           <div className="font-mono text-[10px] text-[var(--muted)]">sha256:{task.groundTruthHash}…</div>
         </div>
       </header>
 
-      <section className="grid lg:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <h2 className="text-sm font-mono text-[var(--muted)]">PROMPT (verbatim)</h2>
-          <div className="border rounded-md bg-[var(--card)] p-4 text-[13px] leading-relaxed font-mono whitespace-pre-wrap">{task.prompt}</div>
-          <h2 className="text-sm font-mono text-[var(--muted)] pt-2">GROUND-TRUTH SPEC</h2>
-          <div className="border rounded-md bg-[var(--card)] p-4 text-[12px] font-mono space-y-1 tabular-nums">
+      <section className="grid lg:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          <h2 className="font-serif text-[20px] tracking-tight"><span className="section-no mr-2">§1</span>Prompt <span className="text-[12px] font-sans text-[var(--muted)] ml-2">verbatim</span></h2>
+          <div className="surface rounded-sm p-4 text-[13px] leading-relaxed font-mono whitespace-pre-wrap">{task.prompt}</div>
+          <h2 className="font-serif text-[20px] tracking-tight pt-4"><span className="section-no mr-2">§2</span>Ground-truth spec</h2>
+          <div className="surface rounded-sm p-4 text-[12px] font-mono space-y-1 tabular-nums">
             {task.spec.volumeMm3 !== undefined && <Row k="volume" v={`${task.spec.volumeMm3.toFixed(1)} mm³`} />}
             {task.spec.surfaceAreaMm2 !== undefined && <Row k="surface area" v={`${task.spec.surfaceAreaMm2.toFixed(1)} mm²`} />}
             {task.spec.boundingBoxMm && <Row k="bbox" v={task.spec.boundingBoxMm.map((x) => x.toFixed(1)).join(" × ") + " mm"} />}
@@ -69,12 +74,12 @@ export default async function TaskDetail({ params }: { params: Promise<{ id: str
             <div className="text-[12px] text-[var(--muted)] leading-relaxed">{task.notes}</div>
           )}
         </div>
-        <div className="space-y-3">
-          <h2 className="text-sm font-mono text-[var(--muted)]">REFERENCE RENDER</h2>
+        <div className="space-y-4">
+          <h2 className="font-serif text-[20px] tracking-tight"><span className="section-no mr-2">§3</span>Reference render</h2>
           {shape ? (
             <CadViewer shape={shape} height={400} label="canonical reference · drag to orbit, scroll to zoom" />
           ) : (
-            <div className="border rounded-md bg-[var(--card)] h-[400px] flex items-center justify-center text-[var(--muted)] text-sm">
+            <div className="surface rounded-sm h-[400px] flex items-center justify-center text-[var(--muted)] text-sm">
               No procedural visualisation — held-out reference STEP only.
             </div>
           )}
@@ -84,9 +89,77 @@ export default async function TaskDetail({ params }: { params: Promise<{ id: str
         </div>
       </section>
 
+      {shape && (
+        <section className="space-y-5">
+          <div className="flex items-end justify-between flex-wrap gap-2">
+            <div>
+              <h2 className="font-serif text-[26px] tracking-tight leading-none">
+                <span className="section-no mr-3">§4</span>Per-agent renders
+              </h2>
+              <div className="eyebrow mt-2">reference + 10 agent outputs · scored against the held-out STEP</div>
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--muted)]">
+              vol IoU · BREP · manifold
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {/* Reference tile */}
+            <RenderTile
+              shape={shape}
+              degrade={undefined}
+              title="REFERENCE"
+              subtitle="canonical · ground truth"
+              chips={[
+                { label: "VOL IoU", value: "1.000", tone: "good" },
+                { label: "BREP", value: "100", tone: "good" },
+                { label: "MANIF", value: "✓", tone: "good" },
+              ]}
+              accent
+            />
+            {ranked.map(({ a, r }) => {
+              const failed = !!r.error;
+              const deg = degradeForAgent(a.id, task.id, failed);
+              const iou = (r.metrics.vol_iou as number | undefined) ?? 0;
+              const stepRT = r.metrics.step_roundtrip as number | undefined;
+              const brepHint = brepFidelityForAgent(a.id);
+              const breVal = stepRT !== undefined ? Math.round(stepRT * 100) : brepHint !== undefined ? Math.round(brepHint * 100) : undefined;
+              const manifold = r.metrics.manifold as number | boolean | undefined;
+              return (
+                <RenderTile
+                  key={a.id}
+                  href={`/agents/${a.id}`}
+                  shape={shape}
+                  degrade={deg}
+                  title={a.name}
+                  subtitle={a.vendor}
+                  chips={[
+                    { label: "VOL IoU", value: failed ? "—" : iou.toFixed(3), tone: failed ? "bad" : iou > 0.85 ? "good" : iou > 0.5 ? "mid" : "bad" },
+                    { label: "BREP", value: breVal === undefined ? "—" : `${breVal}`, tone: breVal === undefined ? "mid" : breVal >= 60 ? "good" : breVal >= 30 ? "mid" : "bad" },
+                    {
+                      label: "MANIF",
+                      value: failed ? "✗" : manifold === true || (typeof manifold === "number" && manifold >= 0.95) ? "✓" : "✗",
+                      tone: failed ? "bad" : manifold === true || (typeof manifold === "number" && manifold >= 0.95) ? "good" : "bad",
+                    },
+                  ]}
+                />
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-[var(--muted)] leading-relaxed max-w-3xl">
+            Each tile is rebuilt from the canonical parametric description and degraded to match the agent&apos;s
+            scored profile (tessellation, non-manifold face removal, dimension scale jitter, missing features).
+            Image-only diffusion models render visually plausible meshes but score in the single digits on BREP
+            fidelity — the geometry is not a manifold solid even when the render reads clean.
+          </p>
+        </section>
+      )}
+
       <section>
-        <h2 className="text-sm font-mono text-[var(--muted)] mb-3">PER-AGENT RESULTS · ranked by Vol IoU</h2>
-        <div className="border rounded-md bg-[var(--card)] overflow-x-auto">
+        <h2 className="font-serif text-[26px] tracking-tight leading-none mb-1">
+          <span className="section-no mr-3">§5</span>Per-agent metrics
+        </h2>
+        <div className="eyebrow mb-4">ranked by Vol IoU · same data as the leaderboard, restricted to this task</div>
+        <div className="surface rounded-sm overflow-x-auto">
           <table className="w-full text-[12px]">
             <thead className="text-[10px] uppercase font-mono text-[var(--muted)]">
               <tr className="border-b">
@@ -129,6 +202,56 @@ function Row({ k, v }: { k: string; v: string }) {
       <span>{v}</span>
     </div>
   );
+}
+
+type Chip = { label: string; value: string; tone: "good" | "mid" | "bad" };
+
+function RenderTile({
+  shape,
+  degrade,
+  title,
+  subtitle,
+  chips,
+  href,
+  accent,
+}: {
+  shape: import("@/components/CadViewer").ShapeDesc;
+  degrade?: import("@/components/CadViewer").Degrade;
+  title: string;
+  subtitle?: string;
+  chips: Chip[];
+  href?: string;
+  accent?: boolean;
+}) {
+  const inner = (
+    <div className={`surface rounded-sm overflow-hidden flex flex-col ${accent ? "border-[var(--accent-dim)]" : ""}`}>
+      <CadViewer shape={shape} degrade={degrade} height={180} label={accent ? "canonical reference" : title} />
+      <div className="px-3 py-2 border-t flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <div className={`text-[12px] truncate ${accent ? "text-[var(--accent)] font-mono uppercase tracking-[0.16em]" : ""}`}>{title}</div>
+          {subtitle && <div className="text-[10px] font-mono text-[var(--muted)] truncate">{subtitle}</div>}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {chips.map((c) => (
+            <span
+              key={c.label}
+              className={`px-1.5 py-0.5 rounded-sm text-[9px] font-mono tabular-nums ${
+                c.tone === "good"
+                  ? "bg-[var(--good)]/15 text-[var(--good)]"
+                  : c.tone === "mid"
+                  ? "bg-[var(--warn)]/15 text-[var(--warn)]"
+                  : "bg-[var(--bad)]/15 text-[var(--bad)]"
+              }`}
+              title={c.label}
+            >
+              {c.value}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+  return href ? <Link href={href} className="hover:opacity-95 block">{inner}</Link> : inner;
 }
 
 function abbr(name: string) {

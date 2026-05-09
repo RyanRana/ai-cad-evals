@@ -39,4 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capture / authoring artefacts
 screenshots/
+viral-prep/
+
+# Local benchmark sweep outputs
+runs/

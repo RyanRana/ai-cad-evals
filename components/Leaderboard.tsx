@@ -31,21 +31,21 @@ export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
   const sorted = [...rows].sort((a, b) => a.rank[uc] - b.rank[uc]);
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-1 text-[11px] font-mono">
+      <div className="flex flex-wrap gap-1.5 text-[11px] font-mono">
         {USE_CASES.map((u) => (
           <button
             key={u.id}
             type="button"
             onClick={() => setUc(u.id)}
-            className={`px-2.5 py-1 rounded-sm border transition-colors ${uc === u.id ? "bg-[var(--foreground)] text-[var(--background)] border-[var(--foreground)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"}`}
+            className={`px-3 py-1.5 rounded-sm border transition-colors ${uc === u.id ? "bg-[var(--accent)] text-[var(--background)] border-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--accent-dim)]"}`}
             title={u.sub}
           >
             {u.label}
-            <span className={`ml-2 text-[10px] ${uc === u.id ? "opacity-70" : "opacity-60"}`}>{u.sub}</span>
+            <span className={`ml-2 text-[10px] ${uc === u.id ? "opacity-80" : "opacity-60"}`}>{u.sub}</span>
           </button>
         ))}
       </div>
-      <div className="border bg-[var(--card)] rounded-md overflow-hidden">
+      <div className="surface rounded-sm overflow-hidden">
         <table className="w-full text-sm">
           <thead className="text-[11px] uppercase tracking-wide text-[var(--muted)]">
             <tr className="border-b">
@@ -66,9 +66,9 @@ export function Leaderboard({ rows }: { rows: LeaderboardRow[] }) {
                 <tr key={row.agent.id} className="border-b last:border-b-0 hover:bg-[var(--background)]">
                   <td className="px-4 py-3 text-[var(--muted)] tabular-nums">{i + 1}</td>
                   <td className="px-2 py-3">
-                    <Link href={`/agents/${row.agent.id}`} className="hover:underline underline-offset-4 inline-flex items-center gap-2">
+                    <Link href={`/agents/${row.agent.id}`} className="hover:text-[var(--accent)] inline-flex items-center gap-2">
                       {row.agent.name}
-                      {onPareto && <span title="On the (capability, $/task) Pareto frontier" className="text-[10px] font-mono px-1.5 py-px rounded-sm bg-[var(--foreground)] text-[var(--background)]">PARETO</span>}
+                      {onPareto && <span title="On the (capability, $/task) Pareto frontier" className="text-[10px] font-mono px-1.5 py-px rounded-sm bg-[var(--accent)] text-[var(--background)]">PARETO</span>}
                     </Link>
                     <div className="text-[11px] text-[var(--muted)]">{row.agent.vendor}</div>
                   </td>

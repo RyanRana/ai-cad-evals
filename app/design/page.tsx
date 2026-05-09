@@ -3,15 +3,19 @@ import Link from "next/link";
 export default function Design() {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-3xl">
-      <header className="not-prose mb-8 space-y-2">
-        <div className="font-mono text-xs text-[var(--muted)]">DESIGN · v0.5 · 2026-05-09</div>
-        <h1 className="text-2xl tracking-tight">From first principles: judging AI CAD agents at research-lab rigor</h1>
-        <p className="text-[var(--muted)] text-sm leading-relaxed">
+      <header className="not-prose mb-12 space-y-4 border-b pb-8">
+        <div className="eyebrow">Design note 03 · v0.5 · 2026-05-09</div>
+        <h1 className="font-serif text-[38px] md:text-[44px] leading-[1.05] tracking-tight">
+          From first principles: judging{" "}
+          <span className="italic text-[var(--accent)]">AI CAD agents</span> at research-lab rigor
+        </h1>
+        <p className="text-[var(--muted)] text-[15px] leading-[1.7] max-w-2xl">
           The v0.4 leaderboard was a single weighted mean over ten categories scored by automatic geometric metrics.
-          That number is concise, but it conflates capabilities that need separate judging modalities, hides reliability,
-          and is gameable. v0.5 rebuilds the scoring on top of an explicit task-space taxonomy, a four-layer category hierarchy,
-          a 2PL Item-Response-Theory ability θ, worst-case p5 reporting, a (capability, $/task) Pareto frontier, and
-          three pre-baked use-case re-weightings. This page is the rationale.
+          That number is concise, but it conflates capabilities that need separate judging modalities, hides
+          reliability, and is gameable. v0.5 rebuilds scoring on top of an explicit task-space taxonomy, a
+          four-layer category hierarchy, a 2PL Item-Response-Theory ability θ, worst-case p5 reporting, a
+          (capability, $/task) Pareto frontier, and three pre-baked use-case re-weightings. This page is the
+          rationale.
         </p>
       </header>
 

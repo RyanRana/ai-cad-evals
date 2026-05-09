@@ -1,0 +1,14 @@
+# Capture / authoring artefacts that don't belong in the deployed site.
+screenshots/
+viral-prep/
+
+# Local benchmark run-sheets and per-agent artifacts.
+runs/
+
+# Editor / OS noise.
+.DS_Store
+*.log
+
+# Tests, fixtures, and evaluator binaries — runtime is static-only.
+scripts/scoring/__pycache__/
+scripts/scoring/*.tmp.stl

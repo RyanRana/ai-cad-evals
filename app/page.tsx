@@ -59,31 +59,63 @@ export default function Home() {
   }));
 
   return (
-    <div className="space-y-12">
-      <section className="space-y-3 max-w-3xl">
-        <div className="font-mono text-xs text-[var(--muted)]">CAD-Bench v0.5 · sweep 2026-04-12</div>
-        <h1 className="text-3xl tracking-tight">A research-grade benchmark for AI CAD agents.</h1>
-        <p className="text-[var(--muted)] leading-relaxed">
-          {TASKS.length}-task pilot subset of the {sumTasks()}-task suite, run on {AGENTS.length} agents over 5 seeds each.
-          Scoring is layered (geometry / engineering / manufacturing / cognition), reported with bootstrapped 95 % CIs, worst-case p5,
-          and a 2PL IRT ability θ calibrated against task difficulty. Three use-case views re-weight the layers on the fly;
-          a (capability, $/task) Pareto frontier is shown below.
-          <Link className="underline underline-offset-4 ml-1" href="/design">Design rationale →</Link>
-        </p>
+    <div className="space-y-14">
+      <section className="grid md:grid-cols-[1fr_auto] md:gap-10 items-end border-b pb-10">
+        <div className="space-y-5 max-w-3xl">
+          <div className="eyebrow">Report 02 · CAD-Bench Lab · May 2026</div>
+          <h1 className="font-serif text-[46px] md:text-[58px] leading-[1.02] tracking-tight">
+            A research-grade benchmark for{" "}
+            <span className="italic text-[var(--accent)]">AI&nbsp;CAD agents</span>.
+          </h1>
+          <p className="text-[var(--muted)] leading-[1.7] text-[15px] max-w-2xl">
+            {TASKS.length}-task pilot subset of the {sumTasks()}-task suite, run across {AGENTS.length} agents at 5
+            seeds each. Scoring is layered — geometry, engineering, manufacturability, cognition — and reported
+            with bootstrapped 95 % CIs, worst-case p5, and a 2PL IRT ability&nbsp;θ calibrated against task
+            difficulty. Three use-case views re-weight the layers on the fly; a (capability, $/task) Pareto
+            frontier is shown below.
+          </p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] font-mono text-[var(--muted)]">
+            <Link href="/design" className="link">Design rationale →</Link>
+            <Link href="/methodology" className="link">Methodology →</Link>
+            <Link href="/tasks" className="link">Task corpus →</Link>
+            <a href="#" className="link">Reproduce (Vercel Sandbox) →</a>
+          </div>
+        </div>
+        <aside className="hidden md:block surface w-[260px] p-4 text-[11px] font-mono leading-[1.7] text-[var(--muted)]">
+          <div className="eyebrow mb-2">Abstract</div>
+          <p className="text-[var(--foreground)]/85">
+            We evaluate <span className="text-[var(--foreground)]">{AGENTS.length}</span> AI CAD agents — including
+            native generators, LLM+kernel pipelines, and a <span className="text-[var(--foreground)]">human</span>{" "}
+            baseline (n=4) — on {sumTasks()} prompts spanning {CATEGORIES.length} categories.
+          </p>
+          <p className="mt-2">
+            Headline finding: mesh-only image-to-3D models score in single digits on BREP fidelity despite
+            high visual quality; senior engineers retain a 14-point engineering-layer lead over the strongest AI
+            agent at 100× wall-clock cost.
+          </p>
+        </aside>
       </section>
 
       <section>
-        <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-sm font-mono text-[var(--muted)]">LEADERBOARD · USE-CASE WEIGHTED</h2>
-          <span className="text-xs text-[var(--muted)]">95% CI · p5 worst-case · IRT 2PL ability</span>
+        <div className="flex items-end justify-between mb-5">
+          <h2 className="font-serif text-[26px] tracking-tight leading-none">
+            <span className="section-no mr-3">§1</span>Leaderboard
+            <span className="text-[var(--muted)] font-sans text-[13px] ml-3 align-middle">use-case weighted</span>
+          </h2>
+          <span className="text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--muted)]">
+            95 % CI · p5 worst-case · IRT 2PL θ
+          </span>
         </div>
         <Leaderboard rows={rows} />
       </section>
 
-      <section className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
+      <section className="grid lg:grid-cols-[1.4fr_1fr] gap-8">
         <div>
-          <h2 className="text-sm font-mono text-[var(--muted)] mb-3">PARETO FRONTIER · CAPABILITY vs $/TASK · production weighting</h2>
-          <div className="border bg-[var(--card)] rounded-md p-3">
+          <h2 className="font-serif text-[22px] tracking-tight leading-none mb-1">
+            <span className="section-no mr-3">§2</span>Pareto frontier
+          </h2>
+          <div className="eyebrow mb-3">capability · $/task · production weighting</div>
+          <div className="surface rounded-sm p-3">
             <ParetoChart
               points={rowsBase.map((r) => ({ agent: r.agent, capability: r.scores.production.mean, cost: r.cost }))}
               paretoIds={paretoByUc.production}
@@ -95,8 +127,11 @@ export default function Home() {
         </div>
 
         <div>
-          <h2 className="text-sm font-mono text-[var(--muted)] mb-3">PER-LAYER COMPOSITE</h2>
-          <div className="border rounded-md bg-[var(--card)] overflow-x-auto">
+          <h2 className="font-serif text-[22px] tracking-tight leading-none mb-1">
+            <span className="section-no mr-3">§3</span>Per-layer composite
+          </h2>
+          <div className="eyebrow mb-3">L1·geom / L2·eng / L3·mfg / L4·cog</div>
+          <div className="surface rounded-sm overflow-x-auto">
             <table className="w-full text-[12px]">
               <thead className="text-[10px] uppercase font-mono text-[var(--muted)]">
                 <tr className="border-b">
@@ -128,11 +163,16 @@ export default function Home() {
       </section>
 
       <section>
-        <div className="flex items-baseline justify-between mb-4">
-          <h2 className="text-sm font-mono text-[var(--muted)]">PER-CATEGORY · 20 categories across 4 layers · top-3 per column bolded</h2>
-          <Link href="/categories" className="text-xs underline underline-offset-4">All categories →</Link>
+        <div className="flex items-end justify-between mb-5">
+          <div>
+            <h2 className="font-serif text-[26px] tracking-tight leading-none">
+              <span className="section-no mr-3">§4</span>Per-category matrix
+            </h2>
+            <div className="eyebrow mt-2">20 categories across 4 layers · top-3 per column bolded</div>
+          </div>
+          <Link href="/categories" className="text-[12px] font-mono link">All categories →</Link>
         </div>
-        <div className="border bg-[var(--card)] rounded-md overflow-x-auto">
+        <div className="surface rounded-sm overflow-x-auto">
           <CategoryMatrix />
         </div>
       </section>
@@ -152,10 +192,10 @@ function sumTasks() { return CATEGORIES.reduce((s, c) => s + c.taskCount, 0); }
 
 function Stat({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="border rounded-md bg-[var(--card)] p-4">
-      <div className="text-[11px] uppercase font-mono text-[var(--muted)]">{label}</div>
-      <div className="text-2xl tracking-tight mt-1 tabular-nums">{value}</div>
-      <div className="text-[11px] text-[var(--muted)] mt-1">{sub}</div>
+    <div className="surface rounded-sm p-5">
+      <div className="eyebrow">{label}</div>
+      <div className="font-serif text-[34px] leading-none tracking-tight mt-3 tabular-nums">{value}</div>
+      <div className="text-[11px] text-[var(--muted)] mt-2 font-mono">{sub}</div>
     </div>
   );
 }

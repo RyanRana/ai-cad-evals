@@ -4,14 +4,16 @@ import { CATEGORIES } from "@/lib/data/categories";
 export default function Methodology() {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-3xl">
-      <header className="not-prose space-y-2 mb-8">
-        <div className="font-mono text-xs text-[var(--muted)]">METHODOLOGY · v0.4 · 2026-04-12</div>
-        <h1 className="text-2xl tracking-tight">How CAD-Bench scores agents</h1>
-        <p className="text-[var(--muted)] text-sm leading-relaxed">
-          The harness is open-source and built to be reproducible: a single python entry point reads
-          <code className="font-mono"> tasks.jsonl</code>, dispatches each prompt to a registered agent,
-          and writes a per-run record (artifact, latency, tokens, metrics) into <code className="font-mono">runs.jsonl</code>.
-          The web UI on this site is a static render of those records.
+      <header className="not-prose space-y-4 mb-12 border-b pb-8">
+        <div className="eyebrow">Methodology · v0.5 · 2026-04-12</div>
+        <h1 className="font-serif text-[38px] md:text-[44px] leading-[1.05] tracking-tight">
+          How CAD-Bench <span className="italic text-[var(--accent)]">scores</span> agents
+        </h1>
+        <p className="text-[var(--muted)] text-[15px] leading-[1.7] max-w-2xl">
+          The harness is open-source and built to be reproducible: a single Python entry point reads
+          <code className="font-mono"> tasks.jsonl</code>, dispatches each prompt to a registered agent, and writes
+          a per-run record (artifact, latency, tokens, metrics) into <code className="font-mono">runs.jsonl</code>.
+          The site you are reading is a static render of those records.
         </p>
       </header>
 

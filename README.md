@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CAD-Bench
 
-## Getting Started
+A research-grade benchmark for AI CAD agents. 308 prompts across 20 categories
+in four layers — geometry, engineering, manufacturing, cognition — scored with
+bootstrap CIs, 2PL IRT ability θ, worst-case p5, capability tiers, and a
+(capability, $/task) Pareto frontier. Live: <https://github.com/RyanRana/ai-cad-evals>.
 
-First, run the development server:
+This repo contains:
+
+- **`app/`** — the static Next.js site (67 prerendered pages: leaderboard,
+  per-agent, per-task with 3D viewer, per-category, methodology, design rationale).
+- **`lib/data/`** — the canonical data: agents, categories, tasks, metrics,
+  ground-truth shapes, scoring (mean / IRT / p5 / Pareto / tier).
+- **`scripts/`** — the Python + TypeScript eval harness that runs real agents
+  (Zoo Text-to-CAD, CADcrush Adam, Claude / GPT-5 / Gemini → CadQuery / OpenSCAD,
+  DeepCAD, Trellis 3D, Spline AI) and produces the JSONL run-sheet that
+  populates the site.
+
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Open <http://localhost:3000>.
 
 ## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The site is fully static — it can be deployed in one click and serves
+without any environment variables.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# one-time
+npm install -g vercel
+vercel login
+
+# deploy a preview from the current branch
+vercel
+
+# promote to production
+vercel --prod
+```
+
+Project configuration lives in [`vercel.ts`](./vercel.ts) (typed
+`@vercel/config` schema). Long-lived assets under `/_next/static/*` and
+`/refs/*` are served `immutable`; every other route gets a strict referrer
+policy.
+
+A one-click deploy:
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FRyanRana%2Fai-cad-evals)
+
+## Running the actual benchmark
+
+The site you see is rendered from `lib/data/results.ts`. To replace those
+synthetic numbers with real ones, see [`scripts/README.md`](./scripts/README.md).
+The short version:
+
+```bash
+pip install -r scripts/scoring/requirements.txt
+brew install opencascade openscad      # or apt equivalent
+
+export ZOO_API_KEY=...
+export ANTHROPIC_API_KEY=...
+export OPENAI_API_KEY=...
+export GOOGLE_API_KEY=...
+
+npx tsx scripts/run-evals.ts --seeds 5 --out runs/$(date +%F).jsonl
+```
+
+## Citation
+
+```
+CAD-Bench v0.5 (2026). Open evaluation harness for AI CAD agents.
+https://github.com/RyanRana/ai-cad-evals
+```
