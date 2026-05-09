@@ -3,21 +3,19 @@
 :root {
   color-scheme: light;
 
-  /* Light "research-paper" palette: off-white field, near-black ink,
-     a single warm accent for italics / accent marks. */
-  --background: #fbfaf6;
-  --background-2: #f5f3ec;
-  --foreground: #14140f;
-  --muted: #6e6a5f;
-  --muted-2: #9b968a;
-  --border: #e2dfd5;
-  --border-strong: #c8c4b5;
-  --accent: #8a5a1f;     /* warm sienna, used sparingly */
-  --accent-dim: #c1a268;
+  --background: #ffffff;
+  --background-2: #fafafa;
+  --foreground: #0a0a0a;
+  --muted: #6b7280;
+  --muted-2: #9ca3af;
+  --border: #ececec;
+  --border-strong: #d4d4d4;
+  --accent: #0a0a0a;
+  --accent-dim: #525252;
   --card: #ffffff;
-  --good: #2f7a3a;
-  --warn: #a06c1a;
-  --bad: #b8333a;
+  --good: #16a34a;
+  --warn: #b45309;
+  --bad: #dc2626;
 }
 
 @theme inline {
@@ -29,7 +27,6 @@
   --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-newsreader);
 }
 
 * {
@@ -39,74 +36,18 @@
 html, body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), -apple-system, system-ui, sans-serif;
-  font-feature-settings: "ss01", "cv01", "tnum";
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--accent);
+  background: var(--foreground);
   color: var(--background);
-}
-
-/* Editorial serif for hero / display copy. */
-.font-serif {
-  font-family: var(--font-newsreader), ui-serif, Georgia, "Times New Roman", serif;
-  font-feature-settings: "ss01", "ss02";
-  letter-spacing: -0.01em;
 }
 
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
-/* Hairline rule used as section separator. */
-.rule {
-  height: 1px;
-  background: linear-gradient(to right, var(--border-strong), transparent 80%);
-}
-
-/* Small-caps preprint-style label. */
-.eyebrow {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-/* Italic numbered section markers. */
-.section-no {
-  font-family: var(--font-newsreader), ui-serif, Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  color: var(--accent);
-  letter-spacing: 0;
-}
-
-/* Card / panel surface. */
 .surface {
   background: var(--card);
   border: 1px solid var(--border);
 }
-
-/* Compact research-table style. */
-table.data {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-table.data thead th {
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-weight: 500;
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border-strong);
-  padding: 10px 10px;
-}
-table.data tbody td {
-  border-bottom: 1px solid var(--border);
-  padding: 9px 10px;
-}
-table.data tbody tr:last-child td { border-bottom: 0; }
-table.data tbody tr:hover { background: rgba(255,255,255,0.015); }

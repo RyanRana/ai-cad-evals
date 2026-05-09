@@ -44,17 +44,13 @@ export default function Playground() {
   const [result, setResult] = useState<Result | null>(null);
   const [elapsedMs, setElapsedMs] = useState<number | null>(null);
 
-  // Persist key in sessionStorage so a tab reload doesn't lose it. Cleared on tab close.
   useEffect(() => {
     const k = sessionStorage.getItem(`pg-key-${provider}`);
-    if (k) setApiKey(k);
-    else setApiKey("");
+    setApiKey(k ?? "");
   }, [provider]);
   useEffect(() => {
     if (apiKey) sessionStorage.setItem(`pg-key-${provider}`, apiKey);
   }, [apiKey, provider]);
-
-  // When the provider changes, snap to its first model.
   useEffect(() => {
     setModel(MODELS[provider][0].id);
   }, [provider]);
@@ -83,24 +79,16 @@ export default function Playground() {
   }
 
   return (
-    <div className="space-y-10">
-      <header className="space-y-3 border-b pb-8">
-        <div className="eyebrow">Live · Playground · BYO key</div>
-        <h1 className="font-serif text-[40px] md:text-[52px] leading-[1.04] tracking-tight">
-          Run <span className="italic text-[var(--accent)]">your own</span> prompt against any frontier model.
-        </h1>
-        <p className="text-[var(--muted)] text-[15px] leading-[1.7] max-w-2xl">
-          Paste an OpenAI, Anthropic, or Google API key, write a prompt, pick an output format. Your key is
-          forwarded once to the chosen provider and is never stored or logged on this site
-          (<a className="link" href="https://github.com">view route handler →</a>). Each response includes the
-          raw model output, a runnable CAD program, and a structured shape we can render in-browser using the
-          same viewer the benchmark uses.
+    <div className="space-y-8">
+      <header className="space-y-2 max-w-2xl">
+        <h1 className="text-[32px] leading-tight tracking-tight font-medium">Playground</h1>
+        <p className="text-[15px] text-[var(--muted)]">
+          Bring your own key. Generate a CAD part with any frontier model.
         </p>
       </header>
 
-      <section className="grid lg:grid-cols-[420px_1fr] gap-8 items-start">
-        {/* ---- left column: controls ---- */}
-        <div className="space-y-5 lg:sticky lg:top-24">
+      <section className="grid lg:grid-cols-[380px_1fr] gap-6 items-start">
+        <div className="space-y-4 lg:sticky lg:top-6">
           <Field label="Provider">
             <ButtonRow
               value={provider}
@@ -112,30 +100,31 @@ export default function Playground() {
               onChange={(v) => setProvider(v as Provider)}
             />
           </Field>
+
           <Field label="Model">
             <select
-              className="w-full surface rounded-sm px-3 py-2 text-[13px] font-mono"
+              className="w-full border border-[var(--border)] rounded-md px-3 py-2 text-[13px] bg-white"
               value={model}
               onChange={(e) => setModel(e.target.value)}
             >
               {MODELS[provider].map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label} <span className="text-[var(--muted)]">— {m.id}</span>
-                </option>
+                <option key={m.id} value={m.id}>{m.label}</option>
               ))}
             </select>
           </Field>
-          <Field label="Output format">
+
+          <Field label="Format">
             <ButtonRow
               value={format}
               options={[
-                { id: "cadquery", label: "CadQuery 2.4" },
+                { id: "cadquery", label: "CadQuery" },
                 { id: "openscad", label: "OpenSCAD" },
               ]}
               onChange={(v) => setFormat(v as Format)}
             />
           </Field>
-          <Field label="API key" hint={keyHint(provider)}>
+
+          <Field label="API key">
             <input
               type="password"
               autoComplete="off"
@@ -143,21 +132,17 @@ export default function Playground() {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={keyPlaceholder(provider)}
-              className="w-full surface rounded-sm px-3 py-2 text-[13px] font-mono"
+              className="w-full border border-[var(--border)] rounded-md px-3 py-2 text-[13px] font-mono bg-white"
             />
-            <div className="text-[10px] font-mono text-[var(--muted)] mt-1.5 leading-relaxed">
-              Stored in <span className="text-[var(--foreground)]/80">sessionStorage</span> only (cleared when
-              you close this tab). Forwarded once to <span className="text-[var(--foreground)]/80">{providerHost(provider)}</span> via
-              <span className="text-[var(--foreground)]/80"> /api/playground</span>. Not logged.
-            </div>
           </Field>
+
           <Field label="Prompt">
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              rows={6}
-              className="w-full surface rounded-sm px-3 py-2 text-[13px] leading-relaxed font-mono resize-y"
-              placeholder="Describe a part. Dimensions, fits, features, intended process…"
+              rows={5}
+              className="w-full border border-[var(--border)] rounded-md px-3 py-2 text-[13px] leading-relaxed resize-y bg-white"
+              placeholder="Describe a part…"
             />
             <div className="flex flex-wrap gap-1.5 mt-2">
               {SAMPLES.map((s, i) => (
@@ -165,72 +150,47 @@ export default function Playground() {
                   key={i}
                   type="button"
                   onClick={() => setPrompt(s)}
-                  className="text-[10px] font-mono px-2 py-1 rounded-sm border hover:border-[var(--accent-dim)] hover:text-[var(--accent)] text-[var(--muted)]"
+                  className="text-[12px] px-2 py-1 rounded-md border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
                 >
-                  sample {i + 1}
+                  Sample {i + 1}
                 </button>
               ))}
             </div>
           </Field>
+
           <button
             type="button"
             disabled={busy || !apiKey || !prompt}
             onClick={run}
-            className="w-full px-4 py-2.5 rounded-sm bg-[var(--accent)] text-[var(--background)] font-mono text-[13px] tracking-wide hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed transition"
+            className="w-full px-4 py-2.5 rounded-md bg-[var(--foreground)] text-white text-[14px] font-medium hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition"
           >
-            {busy ? "running…" : "Generate part →"}
+            {busy ? "Generating…" : "Generate"}
           </button>
         </div>
 
-        {/* ---- right column: result ---- */}
-        <div className="space-y-6 min-w-0">
-          <div className="flex items-end justify-between">
-            <h2 className="font-serif text-[24px] tracking-tight leading-none">
-              <span className="section-no mr-3">§1</span>Live preview
-            </h2>
-            <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--muted)]">
-              {elapsedMs !== null && `t = ${(elapsedMs / 1000).toFixed(2)} s · `}
-              same viewer as /tasks
-            </div>
+        <div className="space-y-5 min-w-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-medium">Preview</h2>
+            {elapsedMs !== null && (
+              <span className="text-[12px] text-[var(--muted)] tabular-nums">{(elapsedMs / 1000).toFixed(2)}s</span>
+            )}
           </div>
           <PreviewPane busy={busy} result={result} />
 
-          <div className="flex items-end justify-between pt-2">
-            <h2 className="font-serif text-[24px] tracking-tight leading-none">
-              <span className="section-no mr-3">§2</span>Generated{" "}
-              {format === "cadquery" ? "CadQuery" : "OpenSCAD"}
-            </h2>
-            <div className="text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--muted)]">
-              copy &amp; run locally
-            </div>
+          <div className="flex items-center justify-between pt-2">
+            <h2 className="text-[15px] font-medium">{format === "cadquery" ? "CadQuery" : "OpenSCAD"}</h2>
           </div>
           <CodePane busy={busy} result={result} format={format} />
-
-          <details className="text-[11px] font-mono text-[var(--muted)] surface rounded-sm">
-            <summary className="cursor-pointer px-3 py-2 select-none">raw model output</summary>
-            <pre className="px-3 pb-3 whitespace-pre-wrap break-words text-[var(--foreground)]/80">
-              {result?.ok ? result.raw : result && !result.ok ? result.error : "—"}
-            </pre>
-          </details>
-
-          <p className="text-[11px] text-[var(--muted)] leading-relaxed max-w-2xl">
-            Output is not benchmarked here — every prompt you write is one ad-hoc sample, not the 5-seed,
-            308-task sweep that produces the leaderboard numbers. To run a real eval pass against your own
-            agent, see <a className="link" href="/methodology">/methodology</a> and the open harness.
-          </p>
         </div>
       </section>
     </div>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="flex items-baseline justify-between mb-1.5">
-        <label className="text-[10px] font-mono tracking-[0.18em] uppercase text-[var(--muted)]">{label}</label>
-        {hint && <span className="text-[10px] font-mono text-[var(--muted-2)]">{hint}</span>}
-      </div>
+      <label className="text-[13px] text-[var(--muted)] mb-1.5 block">{label}</label>
       {children}
     </div>
   );
@@ -252,10 +212,10 @@ function ButtonRow({
           key={o.id}
           type="button"
           onClick={() => onChange(o.id)}
-          className={`px-3 py-1.5 rounded-sm border text-[12px] font-mono transition-colors ${
+          className={`px-3 py-1.5 rounded-md text-[13px] transition-colors ${
             value === o.id
-              ? "bg-[var(--accent)] text-[var(--background)] border-[var(--accent)]"
-              : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--accent-dim)]"
+              ? "bg-[var(--foreground)] text-white"
+              : "border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--foreground)]"
           }`}
         >
           {o.label}
@@ -266,42 +226,28 @@ function ButtonRow({
 }
 
 function PreviewPane({ busy, result }: { busy: boolean; result: Result | null }) {
-  if (busy) {
-    return <div className="surface rounded-sm h-[420px] flex items-center justify-center text-[12px] font-mono text-[var(--muted)]">generating…</div>;
-  }
-  if (!result) {
-    return (
-      <div className="surface rounded-sm h-[420px] flex items-center justify-center text-[12px] font-mono text-[var(--muted)] text-center px-6">
-        Run a prompt to see the live render here.
-        <br />Same Three.js viewer as the benchmark task pages.
-      </div>
-    );
-  }
+  const shell = "border border-[var(--border)] rounded-md h-[420px] flex items-center justify-center text-[13px] text-[var(--muted)] text-center px-6 bg-white";
+  if (busy) return <div className={shell}>Generating…</div>;
+  if (!result) return <div className={shell}>Run a prompt to see the render.</div>;
   if (!result.ok) {
     return (
-      <div className="surface rounded-sm h-[420px] flex items-center justify-center text-center px-6">
-        <div className="space-y-2">
-          <div className="font-mono text-[10px] tracking-[0.18em] uppercase text-[var(--bad)]">request failed</div>
+      <div className={shell}>
+        <div>
+          <div className="text-[var(--bad)] font-medium mb-1">Request failed</div>
           <div className="font-mono text-[12px] text-[var(--foreground)]/85 max-w-md">{result.error}</div>
         </div>
       </div>
     );
   }
   if (!result.shape) {
-    return (
-      <div className="surface rounded-sm h-[420px] flex items-center justify-center text-[12px] font-mono text-[var(--muted)] text-center px-6">
-        Model returned code but no structured shape. The code is below — run it locally with the CadQuery or
-        OpenSCAD CLI to see the part.
-      </div>
-    );
+    return <div className={shell}>Code generated, but no structured shape to render.</div>;
   }
   return (
     <div>
-      <CadViewer shape={result.shape as ShapeDesc} height={420} label={`live render · ${result.modelUsed}`} />
+      <CadViewer shape={result.shape as ShapeDesc} height={420} label={result.modelUsed} />
       {result.tokens && (
-        <div className="text-[10px] font-mono text-[var(--muted)] mt-2 tabular-nums">
-          {result.tokens.input ?? "?"} input · {result.tokens.output ?? "?"} output tokens · primitive{" "}
-          <span className="text-[var(--accent)]">{(result.shape as { type?: string }).type ?? "?"}</span>
+        <div className="text-[12px] text-[var(--muted)] mt-2 tabular-nums">
+          {result.tokens.input ?? "?"} in · {result.tokens.output ?? "?"} out tokens
         </div>
       )}
     </div>
@@ -312,9 +258,9 @@ function CodePane({ busy, result, format }: { busy: boolean; result: Result | nu
   const [copied, setCopied] = useState(false);
   const code = result?.ok ? result.code : "";
   return (
-    <div className="surface rounded-sm relative">
+    <div className="border border-[var(--border)] rounded-md relative bg-white">
       <div className="absolute top-2 right-2 z-10 flex items-center gap-2">
-        <span className="text-[10px] font-mono text-[var(--muted)]">
+        <span className="text-[11px] text-[var(--muted)] font-mono">
           {format === "cadquery" ? "model.py" : "model.scad"}
         </span>
         <button
@@ -326,9 +272,9 @@ function CodePane({ busy, result, format }: { busy: boolean; result: Result | nu
             setCopied(true);
             setTimeout(() => setCopied(false), 1500);
           }}
-          className="text-[10px] font-mono px-2 py-1 rounded-sm border bg-[var(--card)] hover:border-[var(--accent-dim)] hover:text-[var(--accent)] disabled:opacity-40"
+          className="text-[11px] px-2 py-1 rounded-md border border-[var(--border)] hover:border-[var(--foreground)] disabled:opacity-40"
         >
-          {copied ? "copied ✓" : "copy"}
+          {copied ? "Copied" : "Copy"}
         </button>
       </div>
       <pre className="p-4 pr-24 text-[12px] font-mono leading-relaxed overflow-x-auto whitespace-pre min-h-[160px]">
@@ -338,12 +284,6 @@ function CodePane({ busy, result, format }: { busy: boolean; result: Result | nu
   );
 }
 
-function keyHint(p: Provider): string {
-  return p === "anthropic" ? "anthropic.com → console" : p === "openai" ? "platform.openai.com" : "ai.google.dev";
-}
 function keyPlaceholder(p: Provider): string {
   return p === "anthropic" ? "sk-ant-…" : p === "openai" ? "sk-…" : "AIza…";
-}
-function providerHost(p: Provider): string {
-  return p === "anthropic" ? "api.anthropic.com" : p === "openai" ? "api.openai.com" : "generativelanguage.googleapis.com";
 }

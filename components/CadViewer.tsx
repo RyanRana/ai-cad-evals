@@ -568,10 +568,13 @@ function buildGeometry(shape: ShapeDesc, degrade?: Degrade): THREE.BufferGeometr
           bladeSec.push(sec);
         }
         const bladeGeo = loft(bladeSec);
-        // Rotate the blade so its span is along +X, then orbit it about Y by 2πk/N.
-        bladeGeo.rotateX(Math.PI / 2);
-        // Lift halfway up the hub so the blades attach to the hub side.
-        bladeGeo.translate(0, shape.hubH * 0.55, 0);
+        // Local frame: x=chord, y=thickness, z=span (running from hubR outward).
+        // We want span along world +X (radial) and thickness along world Y.
+        // Rotate -90° about Y: (x,y,z) → (z, y, -x). z(span) → x(radial). ✓
+        bladeGeo.rotateY(-Math.PI / 2);
+        // Lift the blade to mid-hub height.
+        bladeGeo.translate(0, shape.hubH / 2, 0);
+        // Orbit around Y so blades fan out evenly.
         bladeGeo.rotateY((k / N) * Math.PI * 2);
         geos.push(bladeGeo);
       }
@@ -586,10 +589,13 @@ function buildGeometry(shape: ShapeDesc, degrade?: Degrade): THREE.BufferGeometr
       return gearGeometry(shape.teeth, shape.module, shape.thickness, shape.boreR, segs, shape.toothH, shape.internal);
     }
     case "planetary_gearset": {
+      // All gears live in the XZ plane (axis along Y) after `gearGeometry`'s
+      // re-orientation. Planets orbit the sun in the XZ plane.
       const m = shape.module;
       const sunR = (m * shape.sunTeeth) / 2;
       const planetR = (m * shape.planetTeeth) / 2;
       const ringR = (m * shape.ringTeeth) / 2;
+
       const sunGeo = gearGeometry(shape.sunTeeth, m, shape.thickness, shape.boreR, segs);
       const ring = ringGeometry(shape.ringTeeth, m, shape.thickness, segs);
       const orbit = sunR + planetR;
@@ -597,22 +603,25 @@ function buildGeometry(shape: ShapeDesc, degrade?: Degrade): THREE.BufferGeometr
       for (let p = 0; p < 3; p++) {
         const ang = (p / 3) * Math.PI * 2;
         const pg = gearGeometry(shape.planetTeeth, m, shape.thickness, m * 0.6, segs);
-        // align tooth phase so planets visually mesh (not metrologically exact, but close).
-        pg.rotateZ(ang * (shape.sunTeeth / shape.planetTeeth));
-        pg.translate(orbit * Math.cos(ang), orbit * Math.sin(ang), 0);
+        // mesh phasing — rotate planet about Y so its teeth align with the sun.
+        pg.rotateY(ang * (shape.sunTeeth / shape.planetTeeth));
+        pg.translate(orbit * Math.cos(ang), 0, orbit * Math.sin(ang));
         planets.push(pg);
       }
-      // small carrier plate behind everything for context
-      const carrier = new THREE.CylinderGeometry(ringR + m, ringR + m, shape.thickness * 0.3, segs(96));
-      carrier.rotateX(Math.PI / 2);
-      carrier.translate(0, 0, -shape.thickness * 0.65);
+
+      // Carrier plate sits a half-thickness below the gear stack so the
+      // planets visibly rest on it. Cylinder default axis = Y → already in XZ.
+      const carrier = new THREE.CylinderGeometry(ringR + m * 1.6, ringR + m * 1.6, shape.thickness * 0.4, segs(96));
+      carrier.translate(0, -shape.thickness * 0.7, 0);
       return mergeGeoms([carrier, ring, sunGeo, ...planets]);
     }
   }
 }
 
-// Toothed cylindrical gear (extruded). `internal=true` builds a ring gear
-// (teeth pointing inward); we instead build that via `ringGeometry` below.
+// Toothed cylindrical gear (extruded). The shape lives in the XY plane and
+// is extruded along Z; we then re-orient it to lie in the XZ plane (axis
+// along Y) so it composes naturally with cylinders that already use Y as
+// their axis.
 function gearGeometry(
   teeth: number,
   module_: number,
@@ -623,16 +632,15 @@ function gearGeometry(
   _internal?: boolean,
 ): THREE.BufferGeometry {
   const pitchR = (module_ * teeth) / 2;
-  const addendum = toothH ?? module_;
-  const dedendum = module_ * 0.25;
+  const addendum = toothH ?? module_ * 1.4;
+  const dedendum = module_ * 0.35;
   const tipR = pitchR + addendum;
   const rootR = pitchR - dedendum;
   const s = new THREE.Shape();
   const half = Math.PI / teeth;
-  const flank = half * 0.55;          // tooth flank width (radians)
+  const flank = half * 0.45;
   for (let i = 0; i < teeth; i++) {
     const c = (i / teeth) * Math.PI * 2;
-    // four points per tooth: root-left, tip-left, tip-right, root-right
     const angs: [number, number][] = [
       [c - half, rootR],
       [c - flank, tipR],
@@ -653,27 +661,28 @@ function gearGeometry(
     hole.absarc(0, 0, boreR, 0, Math.PI * 2, true);
     s.holes.push(hole);
   }
-  const g = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: segs(48) });
+  const g = new THREE.ExtrudeGeometry(s, { depth: thickness, bevelEnabled: false, curveSegments: Math.max(24, segs(48)) });
+  // Centre on the extrusion axis, then rotate so axis is +Y (matches cylinders).
   g.translate(0, 0, -thickness / 2);
+  g.rotateX(-Math.PI / 2);
   return g;
 }
 
 // Internal ring gear: outer disc with teeth pointing inward.
 function ringGeometry(teeth: number, module_: number, thickness: number, segs: (n: number) => number): THREE.BufferGeometry {
   const pitchR = (module_ * teeth) / 2;
-  const addendum = module_;
+  const addendum = module_ * 1.3;
   const dedendum = module_ * 0.4;
   const tipR = pitchR - addendum;
   const rootR = pitchR + dedendum;
-  const outerR = rootR + module_ * 1.2;
+  const outerR = rootR + module_ * 1.6;
 
   const outline = new THREE.Shape();
   outline.absarc(0, 0, outerR, 0, Math.PI * 2, false);
 
   const inner = new THREE.Path();
   const half = Math.PI / teeth;
-  const flank = half * 0.55;
-  // Build internal teeth path counter-clockwise so it acts as a hole.
+  const flank = half * 0.45;
   for (let i = 0; i < teeth; i++) {
     const c = (i / teeth) * Math.PI * 2;
     const angs: [number, number][] = [
@@ -693,8 +702,9 @@ function ringGeometry(teeth: number, module_: number, thickness: number, segs: (
   inner.closePath();
   outline.holes.push(inner);
 
-  const g = new THREE.ExtrudeGeometry(outline, { depth: thickness, bevelEnabled: false, curveSegments: segs(96) });
+  const g = new THREE.ExtrudeGeometry(outline, { depth: thickness, bevelEnabled: false, curveSegments: Math.max(48, segs(96)) });
   g.translate(0, 0, -thickness / 2);
+  g.rotateX(-Math.PI / 2);
   return g;
 }
 
