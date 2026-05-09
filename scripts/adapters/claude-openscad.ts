@@ -40,7 +40,7 @@ export async function runClaudeOpenScad(prompt: string, outDir: string, _seed: n
     });
     if (r.ok) {
       const cost = (totalIn * 0.000015) + (totalOut * 0.000075);
-      return { artifactPath: stlPath, format: "STL" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
+      return { artifactPath: stlPath, scriptPath: scadPath, format: "STL" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
     }
     messages = [...messages, { role: "assistant", content: text }, { role: "user", content: `OpenSCAD failed:\n\n${r.err}\n\nReturn corrected scad.` }];
   }

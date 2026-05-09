@@ -3,3 +3,5 @@ trimesh>=4.4
 numpy>=1.26
 scipy>=1.11
 rtree>=1.2
+networkx>=3.2
+scikit-learn>=1.4    # DBSCAN for heuristic hole/feature detector

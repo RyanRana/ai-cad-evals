@@ -51,7 +51,7 @@ export async function runClaudeCadQuery(prompt: string, outDir: string, _seed: n
     const result = await execCadQuery(scriptPath, outDir);
     if (result.ok) {
       const cost = (totalIn * 0.000015) + (totalOut * 0.000075);
-      return { artifactPath: stepPath, format: "STEP" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
+      return { artifactPath: stepPath, scriptPath, format: "STEP" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
     }
     // Self-repair: append the traceback as a user message.
     messages = [

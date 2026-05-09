@@ -42,7 +42,7 @@ export async function runGeminiOpenScad(prompt: string, outDir: string, _seed: n
     });
     if (r.ok) {
       const cost = (totalIn * 0.0000035) + (totalOut * 0.0000105);
-      return { artifactPath: stlPath, format: "STL" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
+      return { artifactPath: stlPath, scriptPath: scadPath, format: "STL" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
     }
     messages.push({ role: "model", parts: [{ text }] });
     messages.push({ role: "user", parts: [{ text: `OpenSCAD failed:\n\n${r.err}\n\nReturn corrected scad.` }] });

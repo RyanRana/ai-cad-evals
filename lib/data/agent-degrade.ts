@@ -88,6 +88,94 @@ const AGENT_PRESETS: Record<string, AgentDegradeBase> = {
     color: 0xa6a6a8,
   },
 
+  // --- v0.6 closed-source variants (LLM + CadQuery, BREP-quality output) ---
+  "claude-sonnet-4-6-cadquery": {
+    brepFidelity: 0.66,
+    shading: "smooth",
+    nonManifold: 0.025,
+    missingFeatures: 0.06,
+    scale: [0.996, 1.003, 0.999],
+    color: 0xc0c0c0,
+  },
+  "claude-haiku-4-5-cadquery": {
+    brepFidelity: 0.50,
+    shading: "smooth",
+    nonManifold: 0.05,
+    missingFeatures: 0.12,
+    scale: [0.99, 1.005, 0.995],
+    color: 0xb8b8b8,
+  },
+  "o4-cadquery": {
+    brepFidelity: 0.74,
+    shading: "smooth",
+    nonManifold: 0.012,
+    missingFeatures: 0.025,
+    scale: [0.999, 1.001, 0.999],
+    color: 0xc4c4c4,
+  },
+  "gpt-5-mini-openscad": {
+    brepFidelity: 0.16,
+    shading: "csg",
+    nonManifold: 0.06,
+    missingFeatures: 0.18,
+    scale: [0.985, 1.012, 0.99],
+    color: 0xb2b4b8,
+  },
+  "gemini-2-5-flash-cadquery": {
+    brepFidelity: 0.59,
+    shading: "smooth",
+    nonManifold: 0.03,
+    missingFeatures: 0.08,
+    scale: [0.992, 1.006, 0.997],
+    color: 0xbcbcbe,
+  },
+
+  // --- v0.6 open-weight baselines ---------------------------------------
+  "deepseek-r1-cadquery": {
+    brepFidelity: 0.61,
+    shading: "smooth",
+    nonManifold: 0.025,
+    missingFeatures: 0.07,
+    scale: [0.995, 1.004, 0.998],
+    color: 0xb8babb,
+  },
+  "llama-3-3-70b-openscad": {
+    brepFidelity: 0.14,
+    shading: "csg",
+    nonManifold: 0.07,
+    missingFeatures: 0.20,
+    scale: [0.98, 1.018, 0.99],
+    color: 0xafb1b3,
+  },
+  "qwen-3-coder-cadquery": {
+    brepFidelity: 0.59,
+    shading: "smooth",
+    nonManifold: 0.03,
+    missingFeatures: 0.10,
+    scale: [0.992, 1.008, 0.996],
+    color: 0xb6b8ba,
+  },
+
+  // --- v0.6 diffusion 3D --------------------------------------------------
+  "hunyuan3d-2": {
+    brepFidelity: 0.05,
+    shading: "facets",
+    nonManifold: 0.16,
+    missingFeatures: 0.22,
+    scale: [0.96, 1.03, 0.97],
+    color: 0xa6a4a0,
+  },
+
+  // --- v0.6 specialty CAD-tuned model -------------------------------------
+  "cad-coder-r1": {
+    brepFidelity: 0.74,
+    shading: "smooth",
+    nonManifold: 0.018,
+    missingFeatures: 0.05,
+    scale: [0.998, 1.001, 0.999],
+    color: 0xc2c2c4,
+  },
+
   // --- human baseline ---------------------------------------------------
   "human-mechE": {
     brepFidelity: 0.96,

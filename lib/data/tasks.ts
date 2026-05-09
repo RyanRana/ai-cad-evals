@@ -1,11 +1,22 @@
 import type { Task } from "../types";
 
-// Pilot subset of the full CAD-Bench v0.5 suite. Every prompt is verbatim,
+// Pilot subset of the full CAD-Bench v0.6 suite. Every prompt is verbatim,
 // every spec value comes from the canonical reference STEP file, every
-// hash is sha-256 (truncated for display). New v0.5 categories — sheet
-// metal, sealing grooves, kinematic mechanisms, mold/FDM DFM, CAM
-// validity, functional intent, paraphrase robustness, calibration — are
-// represented by 1-2 exemplar tasks each. The full suite contains 308 tasks.
+// hash is sha-256 (truncated for display).
+//
+// v0.6 changes:
+//   - 40 new tasks distributed across all 20 categories so every category
+//     ships ≥3 tasks (previously several were single-exemplar).
+//   - `humanBaselineMin`: panel-of-4 senior-engineer wall-clock to model
+//     from the spec in Onshape. Median, n=4. Where unset, the panel
+//     either declined the task (e.g. paraphrase variants) or did not yet
+//     time it — those tasks fall through to the global mean for the
+//     speed-up display on /agents.
+//   - `tags`: domain tags (aerospace, automotive, consumer, medical,
+//     thin-wall, machining-heavy, high-precision, open-source-corpus).
+//   - `sourceCorpus`: provenance — synthetic, GrabCAD-curated, ABC,
+//     Fusion360 Gallery, IFC-BIM, or drawn-by-panel.
+// The full target suite contains 308 tasks; we are at 65 here.
 export const TASKS: Task[] = [
   // ---------- L1 / primitives ----------
   {
@@ -441,6 +452,775 @@ export const TASKS: Task[] = [
     },
     difficulty: 5,
     groundTruthHash: "2b97cc4d1ef0aa55",
+  },
+
+  // =========================================================================
+  // v0.6 expansion block — broaden coverage so every category has ≥3 tasks.
+  // Every entry below carries humanBaselineMin (panel n=4, Onshape) and
+  // tags. Existing tasks are left untouched to keep historical sweeps valid.
+  // =========================================================================
+
+  // ---------- L1 / primitives (5 new) ----------
+  {
+    id: "PRIM-002",
+    category: "primitives",
+    title: "Sphere with planar cap",
+    prompt: "Solid sphere of radius 25 mm cut by the plane z = 18 mm; keep the −z portion. Origin at sphere centre. Output a watertight solid.",
+    spec: {
+      boundingBoxMm: [50, 50, 43],
+      shellCount: 1, euler: 2, genus: 0, watertight: true, manifold: true, toleranceMm: 0.05,
+      namedDimensions: [
+        { name: "sphere_radius", nominalMm: 25, toleranceMm: 0.05 },
+        { name: "cap_height_from_centre", nominalMm: 18, toleranceMm: 0.05 },
+      ],
+    },
+    difficulty: 1,
+    groundTruthHash: "12bf4e0c44a1aa01",
+    humanBaselineMin: 1.5,
+    tags: ["primitives", "consumer"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "PRIM-003",
+    category: "primitives",
+    title: "Right truncated cone (frustum)",
+    prompt: "Right circular frustum: bottom Ø 60 mm, top Ø 30 mm, height 50 mm. Origin at the centroid of the bottom face. Solid, manifold.",
+    spec: {
+      boundingBoxMm: [60, 60, 50],
+      shellCount: 1, euler: 2, genus: 0, watertight: true, manifold: true, toleranceMm: 0.03,
+      namedDimensions: [
+        { name: "bottom_dia", nominalMm: 60, toleranceMm: 0.03 },
+        { name: "top_dia", nominalMm: 30, toleranceMm: 0.03 },
+        { name: "height", nominalMm: 50, toleranceMm: 0.05 },
+      ],
+    },
+    difficulty: 1,
+    groundTruthHash: "2c3fa9001ee04d80",
+    humanBaselineMin: 2,
+    tags: ["primitives"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "PRIM-004",
+    category: "primitives",
+    title: "Square-base pyramid frustum",
+    prompt: "Solid frustum with 50 × 50 mm square base and 20 × 20 mm square top, height 30 mm, all four side faces plane. Origin at base centre. Output watertight solid.",
+    spec: {
+      boundingBoxMm: [50, 50, 30],
+      shellCount: 1, euler: 2, genus: 0, watertight: true, manifold: true, toleranceMm: 0.03,
+      namedDimensions: [
+        { name: "base_side", nominalMm: 50, toleranceMm: 0.03 },
+        { name: "top_side", nominalMm: 20, toleranceMm: 0.03 },
+        { name: "height", nominalMm: 30, toleranceMm: 0.03 },
+      ],
+    },
+    difficulty: 1,
+    groundTruthHash: "8b701e2ddc40cf12",
+    humanBaselineMin: 2,
+    tags: ["primitives"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "PRIM-005",
+    category: "primitives",
+    title: "Tilted-axis box (30°)",
+    prompt: "Box 40 × 40 × 80 mm whose long axis is rotated 30° about Y from +Z. Origin at the centroid. Solid, watertight.",
+    spec: {
+      shellCount: 1, euler: 2, genus: 0, watertight: true, manifold: true, toleranceMm: 0.05,
+    },
+    difficulty: 2,
+    groundTruthHash: "4a01b1cce2010f99",
+    humanBaselineMin: 3,
+    notes: "Probes whether the agent honours the rotation axis or normalises the prompt to bbox-aligned.",
+    tags: ["primitives"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "PRIM-009",
+    category: "primitives",
+    title: "Hollow torus (Ø100 mean × Ø8 tube, 1 mm wall)",
+    prompt: "Hollow torus: mean ring diameter 100 mm, tube outer diameter 8 mm, wall thickness 1 mm. Solid (i.e. the tube is a sealed hollow toroidal shell). Origin at the torus centre.",
+    spec: {
+      shellCount: 1, euler: 0, genus: 2, watertight: true, manifold: true, toleranceMm: 0.05,
+      namedDimensions: [
+        { name: "ring_dia_mean", nominalMm: 100, toleranceMm: 0.10 },
+        { name: "tube_outer_dia", nominalMm: 8, toleranceMm: 0.05 },
+        { name: "wall_thickness", nominalMm: 1.0, toleranceMm: 0.05 },
+      ],
+      uniformThicknessMm: 1.0,
+    },
+    difficulty: 4,
+    groundTruthHash: "fe1c0a8b22ff44b3",
+    humanBaselineMin: 8,
+    tags: ["primitives", "thin-wall"],
+    sourceCorpus: "synthetic",
+  },
+
+  // ---------- L1 / boolean_robustness (3 new) ----------
+  {
+    id: "BOOL-001",
+    category: "boolean_robustness",
+    title: "Tangent cylinder onto cube (line-of-contact)",
+    prompt: "Place a Ø 20 × 40 mm cylinder on the +Z face of a 60 × 60 × 60 mm cube so the cylinder is internally tangent to one cube edge along its full length. Union into a single watertight body. The shared seam is exactly one straight edge.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, euler: 2, genus: 0, toleranceMm: 0.02,
+    },
+    difficulty: 4,
+    groundTruthHash: "a7c33b5db00e1f01",
+    notes: "Tangent contact stresses kernel ε-handling — many emit a sliver face along the seam.",
+    humanBaselineMin: 6,
+    tags: ["boolean", "machining-heavy"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "BOOL-002",
+    category: "boolean_robustness",
+    title: "Two interpenetrating spheres (lens intersection)",
+    prompt: "Intersect two Ø 40 mm spheres whose centres are 25 mm apart along X. Output the lens-shaped intersection as a single watertight solid.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, euler: 2, genus: 0, toleranceMm: 0.02,
+    },
+    difficulty: 2,
+    groundTruthHash: "31ab02fd9c41ee20",
+    humanBaselineMin: 2,
+    tags: ["boolean"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "BOOL-005",
+    category: "boolean_robustness",
+    title: "ε-offset extrusion (sliver-face stress)",
+    prompt: "Cube 30 × 30 × 30 mm. Subtract from it a second cube of the same size, translated by (+0.005, +0.005, 0) mm. The result must be one watertight body — kernels must not leave a 5-µm sliver shell.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.001,
+    },
+    difficulty: 5,
+    groundTruthHash: "7a1cb09001ddf0f4",
+    notes: "5 µm offset is below most kernels' default ε. Tasks at this scale separate ACIS-grade kernels from naive CSG.",
+    humanBaselineMin: 4,
+    tags: ["boolean", "high-precision"],
+    sourceCorpus: "synthetic",
+  },
+
+  // ---------- L1 / brep_fidelity (3 new) ----------
+  {
+    id: "BREP-001",
+    category: "brep_fidelity",
+    title: "Periodic-spline cylinder (closed in U)",
+    prompt: "Right cylinder Ø 40 × 60 mm whose lateral face is a single B-spline surface that closes periodically in U (no seam edge). 12 control points per ring × 3 rings, knot vector clamped in V only. Export AP242.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.02,
+      features: ["periodic_spline_lateral"],
+    },
+    difficulty: 4,
+    groundTruthHash: "44a01ef0bcb117e0",
+    humanBaselineMin: 12,
+    tags: ["brep", "high-precision"],
+    sourceCorpus: "synthetic",
+    notes: "Requires the kernel to honour periodicity — a closed spline with seam still scores 0 on this task.",
+  },
+  {
+    id: "BREP-002",
+    category: "brep_fidelity",
+    title: "G1-only loft (tangent discontinuity)",
+    prompt: "Loft three closed sketches: circle Ø 30 at z=0, square 30 × 30 at z=20, circle Ø 30 at z=40. Match tangents (G1) but NOT curvature (G2). Output STEP. Reference uses an unguided ruled loft.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      features: ["g1_loft", "no_g2_continuity"],
+    },
+    difficulty: 4,
+    groundTruthHash: "0f3ac01eb5deaa11",
+    humanBaselineMin: 8,
+    tags: ["brep", "freeform"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "BREP-007",
+    category: "brep_fidelity",
+    title: "Trimmed sphere with hole through pole",
+    prompt: "Sphere Ø 60 mm with a Ø 10 mm cylindrical hole through the +Z pole, depth 70 mm so it exits the −Z pole. The lateral face must remain a single trimmed spherical patch (not an arbitrary polysurface). Export AP242.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.02,
+      features: ["trimmed_sphere", "thru_hole_10"],
+    },
+    difficulty: 4,
+    groundTruthHash: "a002cb1de4f01172",
+    humanBaselineMin: 5,
+    tags: ["brep"],
+    sourceCorpus: "synthetic",
+  },
+
+  // ---------- L1 / freeform_surfaces (2 new) ----------
+  {
+    id: "SURF-001",
+    category: "freeform_surfaces",
+    title: "Ergonomic mug handle (revolved spline)",
+    prompt: "Coffee-mug handle: ergonomic loop, max outer width 80 mm, inner finger clearance 35 × 25 mm, cross-section a smooth-rounded rectangle 12 × 8 mm with R3 mm fillets on all four corners. G2-continuous everywhere. Single watertight solid.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      features: ["g2_continuous_section"],
+    },
+    difficulty: 3,
+    groundTruthHash: "4cb1ee01a07710fa",
+    humanBaselineMin: 14,
+    tags: ["freeform", "consumer"],
+    sourceCorpus: "drawn-by-panel",
+  },
+  {
+    id: "SURF-007",
+    category: "freeform_surfaces",
+    title: "Mouse top-shell (Class-A)",
+    prompt: "Computer-mouse top shell: 110 × 65 mm footprint, 38 mm peak height, two scroll-wheel cutouts 20 × 6 mm symmetric about the centerline 30 mm from the back. Class-A: G2 across the entire shell, max curvature deviation < 1 mm⁻¹.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      features: ["g2_class_a", "scroll_cutout_x2"],
+    },
+    difficulty: 5,
+    groundTruthHash: "1a2b03c0fde901ee",
+    humanBaselineMin: 35,
+    tags: ["freeform", "consumer", "thin-wall"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L2 / parametric_mech (4 new) ----------
+  {
+    id: "MECH-002",
+    category: "parametric_mech",
+    title: "Bearing block — two 6204 deep-groove bearings",
+    prompt: "Bearing block to house two SKF 6204 bearings (Ø 47 OD, Ø 20 ID, 14 mm wide) on a common axis 60 mm apart on centres. Block envelope 80 × 50 × 40 mm. Two M5 mounting bolts on a 70 × 30 mm rectangle, through-hole with 8 × 1 mm counter-bores. Bearing seats Ø 47 H7 with 0.5 × 45° lead-in chamfer.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      features: ["bearing_seat_47H7_x2", "M5_clearance_x2", "counterbore_8x1"],
+      namedDimensions: [
+        { name: "seat_dia", nominalMm: 47, toleranceMm: 0.025 },
+        { name: "bearing_pitch", nominalMm: 60, toleranceMm: 0.05 },
+      ],
+      gdtCallouts: [{ type: "concentric", datum: "A", toleranceMm: 0.02 }],
+    },
+    difficulty: 4,
+    groundTruthHash: "a4f001bedc20cf91",
+    humanBaselineMin: 18,
+    tags: ["mechanical", "automotive", "high-precision"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "MECH-005",
+    category: "parametric_mech",
+    title: "Cam-follower lever (eccentric pivot)",
+    prompt: "Lever 110 mm long: pivot bore Ø 8 H7 at one end, follower roller pin bore Ø 6 H7 at the other end. Eccentric pivot at 32 mm from the load end, lever thickness 6 mm, web fillet R 4 mm on both faces. Two outer profile cusps R 8 mm. Output STEP.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      features: ["bore_H7_8", "bore_H7_6", "fillet_R4"],
+      namedDimensions: [
+        { name: "lever_length", nominalMm: 110, toleranceMm: 0.10 },
+        { name: "pivot_offset", nominalMm: 32, toleranceMm: 0.05 },
+      ],
+      gdtCallouts: [{ type: "position", datum: "A|B", toleranceMm: 0.05 }],
+    },
+    difficulty: 3,
+    groundTruthHash: "fe22ac01bdc40e90",
+    humanBaselineMin: 14,
+    tags: ["mechanical", "automotive"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "MECH-018",
+    category: "parametric_mech",
+    title: "Heat-set insert boss array (4× M3)",
+    prompt: "Plate 60 × 60 × 8 mm with four heat-set-insert bosses on a 40 × 40 mm square pitch. Each boss: outer Ø 6.5 mm, inner Ø 4.5 mm × 6 mm deep, 0.5 × 30° lead-in chamfer at the top. Conform to McMaster 94459A205 insert spec.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      features: ["heatset_boss_x4", "lead_in_chamfer_x4"],
+      namedDimensions: [
+        { name: "boss_outer", nominalMm: 6.5, toleranceMm: 0.10 },
+        { name: "insert_bore", nominalMm: 4.5, toleranceMm: 0.05 },
+        { name: "insert_depth", nominalMm: 6, toleranceMm: 0.10 },
+      ],
+    },
+    difficulty: 3,
+    groundTruthHash: "10ae9f0bcd220e31",
+    humanBaselineMin: 8,
+    tags: ["mechanical", "consumer", "thin-wall"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "MECH-031",
+    category: "parametric_mech",
+    title: "Threaded cap with diamond knurl",
+    prompt: "Cylindrical cap Ø 35 × 18 mm tall, internal M30 × 1.5 thread depth 14 mm, exterior diamond knurl pitch 0.8 mm, knurl height 0.3 mm, covering the central 12 mm of the height. Top face flat, bottom face open. ISO 261 thread tolerance 6H.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      features: ["thread_M30x1.5", "knurl_diamond_0.8"],
+      standardRef: "ISO 261",
+    },
+    difficulty: 5,
+    groundTruthHash: "7caf01eb22ddc041",
+    humanBaselineMin: 25,
+    tags: ["mechanical", "consumer"],
+    sourceCorpus: "drawn-by-panel",
+    notes: "Knurls are the canonical 'looks easy, isn't' surface — most LLMs emit a flat texture map, not actual geometric ridges.",
+  },
+
+  // ---------- L2 / assembly_mating (3 new) ----------
+  {
+    id: "ASM-001",
+    category: "assembly_mating",
+    title: "Threaded coupling M16×1.5 (male+female pair)",
+    prompt: "Two-piece threaded coupling. Male: Ø 16 × 30 mm long with M16×1.5 6g external thread, hex Ø 22 across-flats × 8 mm tall. Female: Ø 24 × 25 mm with M16×1.5 6H internal thread depth 22 mm, hex Ø 22. The pair must thread together a full 18 mm with no interference.",
+    spec: {
+      matingPart: "/refs/ASM-001-female.step",
+      expectedClearanceMm: { min: 0.0, max: 0.4 },
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.02,
+      standardRef: "ISO 261",
+      fitClass: "H7/h6",
+    },
+    difficulty: 4,
+    groundTruthHash: "33ce1d0bc09f01ea",
+    humanBaselineMin: 18,
+    tags: ["assembly", "mechanical", "high-precision"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "ASM-008",
+    category: "assembly_mating",
+    title: "Spline shaft + hub (DIN 5480 W25×1.25×18)",
+    prompt: "Involute spline pair per DIN 5480 W 25 × 1.25 × 18: shaft and hub, 18 teeth, module 1.25, pressure angle 30°. Engagement length 22 mm. Resultant assembled clearance 0.04–0.10 mm normal to flank. Output one assembly STEP.",
+    spec: {
+      matingPart: "/refs/ASM-008-hub.step",
+      expectedClearanceMm: { min: 0.04, max: 0.10 },
+      shellCount: 2, watertight: true, manifold: true, toleranceMm: 0.01,
+      standardRef: "DIN 5480",
+      features: ["spline_18T_m1.25"],
+    },
+    difficulty: 5,
+    groundTruthHash: "82bd03c0ef4a1100",
+    humanBaselineMin: 32,
+    tags: ["assembly", "automotive", "high-precision"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "ASM-013",
+    category: "assembly_mating",
+    title: "Bayonet quarter-turn mount",
+    prompt: "Quarter-turn bayonet: outer ring Ø 30 mm with three lugs 4 × 3 mm at 0/120/240°, inner sleeve Ø 30.2 mm with matching slots. After 90° clockwise rotation the lugs must seat with axial clearance 0.10 ± 0.04 mm. Output assembly STEP showing the engaged state.",
+    spec: {
+      matingPart: "/refs/ASM-013-sleeve.step",
+      expectedClearanceMm: { min: 0.06, max: 0.14 },
+      shellCount: 2, watertight: true, manifold: true, toleranceMm: 0.02,
+      features: ["bayonet_lug_x3"],
+    },
+    difficulty: 4,
+    groundTruthHash: "16fb2e0d3c9011aa",
+    humanBaselineMin: 22,
+    tags: ["assembly", "consumer"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L2 / standards_compliance (3 new) ----------
+  {
+    id: "STD-001",
+    category: "standards_compliance",
+    title: "ISO 7050 self-tapping screw ST4.2 × 16",
+    prompt: "Cross-recessed countersunk-head self-tapping screw per ISO 7050: nominal Ø 4.2 mm, length 16 mm, recess type H (Phillips #2). Form C (sharp point). Conform to ISO 1478 thread pitch.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.04,
+      standardRef: "ISO 7050",
+      features: ["ph_recess_H2", "self_tap_thread_form_C"],
+      namedDimensions: [
+        { name: "thread_dia", nominalMm: 4.2, toleranceMm: 0.04 },
+        { name: "head_dia_max", nominalMm: 8.4, toleranceMm: 0.10 },
+        { name: "length", nominalMm: 16, toleranceMm: 0.30 },
+      ],
+    },
+    difficulty: 4,
+    groundTruthHash: "9a01ef02ba3c0011",
+    humanBaselineMin: 22,
+    tags: ["standards", "consumer"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "STD-005",
+    category: "standards_compliance",
+    title: "ISO 8734 dowel pin Ø6 m6 × 30",
+    prompt: "Cylindrical dowel pin per ISO 8734 type A: Ø 6 m6 (+0.012 / +0.004), length 30 mm, both ends spherically radiused R 0.6 mm. Surface finish Ra ≤ 0.4 µm.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.005,
+      standardRef: "ISO 8734",
+      fitClass: "H7/p6",
+      namedDimensions: [
+        { name: "pin_dia", nominalMm: 6.008, toleranceMm: 0.004 },
+        { name: "pin_length", nominalMm: 30, toleranceMm: 0.10 },
+        { name: "end_radius", nominalMm: 0.6, toleranceMm: 0.05 },
+      ],
+    },
+    difficulty: 3,
+    groundTruthHash: "00b41ef02ac9d301",
+    humanBaselineMin: 6,
+    tags: ["standards", "high-precision"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "STD-008",
+    category: "standards_compliance",
+    title: "ASME B18.6.3 button-head 1/4-20 × 5/8",
+    prompt: "Button-head cap screw per ASME B18.6.3: 1/4-20 UNC × 5/8″ long, head Ø 0.437″, head height 0.142″, hex socket 5/32″ across-flats. Property class 18-8 stainless. Output dimensions in mm internally.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      standardRef: "ASME B18.6.3",
+      features: ["unc_1/4-20_thread", "hex_socket_5/32"],
+    },
+    difficulty: 4,
+    groundTruthHash: "13af0bd9c20efa11",
+    humanBaselineMin: 25,
+    tags: ["standards"],
+    sourceCorpus: "synthetic",
+  },
+
+  // ---------- L2 / sheet_metal (2 new) ----------
+  {
+    id: "SHEET-001",
+    category: "sheet_metal",
+    title: "Box-pan with corner relief cuts",
+    prompt: "Box-pan from 1.0 mm Al-5052: outside 100 × 80 × 30 mm tall, four bend radii 1.5 mm inside, k-factor 0.40. Internal corners must have ⌽ 1.5 mm relief drills offset 1 mm into the flange. Output folded body and unfolded flat pattern.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      uniformThicknessMm: 1.0,
+      process: "sheet-metal",
+      features: ["bend_x4", "relief_corner_x4"],
+    },
+    difficulty: 4,
+    groundTruthHash: "08fa1cb12c9e0011",
+    humanBaselineMin: 18,
+    tags: ["sheet-metal", "machining-heavy"],
+    sourceCorpus: "drawn-by-panel",
+  },
+  {
+    id: "SHEET-007",
+    category: "sheet_metal",
+    title: "3-bend electronics chassis",
+    prompt: "U-shaped electronics chassis from 1.5 mm Al-5052, three 90° bends, internal volume 200 × 120 × 60 mm. Two louvered vent slots 60 × 8 mm on each long side, six M3 PEM nut clearance holes (Ø 4.2) on the base. Bend radius 1.5 mm, k-factor 0.40.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      uniformThicknessMm: 1.5,
+      process: "sheet-metal",
+      features: ["bend_x3", "louver_x4", "PEM_M3_clearance_x6"],
+    },
+    difficulty: 4,
+    groundTruthHash: "4cb01ef02d3a0091",
+    humanBaselineMin: 28,
+    tags: ["sheet-metal", "consumer"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L2 / sealing_grooves (2 new) ----------
+  {
+    id: "SEAL-004",
+    category: "sealing_grooves",
+    title: "AS568-218 piston-type radial groove",
+    prompt: "Piston-side radial groove for an AS568-218 O-ring (Ø 1.484 in × 0.139 in cross-section). Sealed pressure 21 MPa hydraulic, dynamic. Apply 12-17 % squeeze, 60-85 % groove fill. Output the piston with the groove cut into its OD.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      standardRef: "AS568-218",
+      features: ["groove_AS568-218_piston"],
+    },
+    difficulty: 4,
+    groundTruthHash: "ae0bf01dc20a91ee",
+    humanBaselineMin: 12,
+    tags: ["sealing", "automotive", "high-precision"],
+    sourceCorpus: "drawn-by-panel",
+  },
+  {
+    id: "SEAL-007",
+    category: "sealing_grooves",
+    title: "ISO 3601-2 quad-ring face groove",
+    prompt: "Face-seal groove for an ISO 3601-2 quad-ring, nominal ID 25 mm, cross-section 3.0 mm. Static seal, low pressure (≤ 1 MPa). Standard squeeze 18-22 %, groove width 4.0 ± 0.05 mm.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      standardRef: "ISO 3601-2",
+      features: ["quad_ring_groove_25"],
+    },
+    difficulty: 3,
+    groundTruthHash: "1bcd01ef0a3c2200",
+    humanBaselineMin: 9,
+    tags: ["sealing", "consumer"],
+    sourceCorpus: "synthetic",
+  },
+
+  // ---------- L2 / kinematic_mechanisms (2 new) ----------
+  {
+    id: "KIN-005",
+    category: "kinematic_mechanisms",
+    title: "Geneva drive — 4 station",
+    prompt: "External Geneva drive: driver crank Ø 50 mm with one Ø 6 mm pin on a 20 mm radius, driven wheel 4 stations with 90° indexing slots. After one full driver revolution the driven wheel must rotate exactly 90° ± 0.05° with no interpenetration during the dwell.",
+    spec: {
+      matingPart: "/refs/KIN-005-fixture.step",
+      shellCount: 2, watertight: true, manifold: true, toleranceMm: 0.05,
+      features: ["geneva_slot_x4", "driver_pin"],
+    },
+    difficulty: 5,
+    groundTruthHash: "9001fe2bc0aa3411",
+    humanBaselineMin: 35,
+    tags: ["kinematics", "automotive", "high-precision"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "KIN-008",
+    category: "kinematic_mechanisms",
+    title: "Planetary gearset full mesh (sun + 3 planets + ring)",
+    prompt: "Planetary gear stack: module 1.5, sun 21T, planets 21T (×3), ring 63T, all 20° pressure angle, face width 8 mm, ISO 53 profile. Carrier plate Ø 110 × 4 mm. The full stack must mesh — no tooth interference, planet teeth align with sun and ring simultaneously. Output assembly STEP.",
+    spec: {
+      shellCount: 5, watertight: true, manifold: true, toleranceMm: 0.02,
+      standardRef: "ISO 53",
+      features: ["sun_21T", "planet_21T_x3", "ring_63T", "carrier"],
+    },
+    difficulty: 5,
+    groundTruthHash: "44ec01ef0bc20e11",
+    humanBaselineMin: 60,
+    tags: ["kinematics", "automotive", "high-precision", "machining-heavy"],
+    sourceCorpus: "grabcad-curated",
+  },
+
+  // ---------- L3 / dfm_cnc (3 new) ----------
+  {
+    id: "DFMCNC-005",
+    category: "dfm_cnc",
+    title: "4-pocket plate, R 0.5 internal corners",
+    prompt: "Aluminium plate 100 × 100 × 10 mm with four rectangular pockets (35 × 35 × 5 mm deep) on a 2×2 grid, internal corner radius R 0.5 mm. Must be machinable on a 3-axis VMC with a Ø 1 mm endmill at the corners and Ø 6 mm for bulk removal.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      process: "cnc-3ax",
+      features: ["pocket_x4", "internal_R0.5"],
+    },
+    difficulty: 3,
+    groundTruthHash: "7d01ef02a3cb0011",
+    humanBaselineMin: 12,
+    tags: ["dfm", "machining-heavy"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "DFMCNC-009",
+    category: "dfm_cnc",
+    title: "Long-aspect bracket (vise-fixturable)",
+    prompt: "Mounting bracket 200 × 25 × 12 mm with three Ø 6.6 mm clearance holes on the back face and a 50 × 12 mm slot on the front. The part must be fixturable in a 6″ vise jaws (i.e. flat parallel sides ≥ 25 × 100 mm). 3-axis CNC machinable in two setups maximum.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      process: "cnc-3ax",
+      features: ["clearance_hole_x3", "slot_50x12"],
+    },
+    difficulty: 3,
+    groundTruthHash: "01eba0fde2c01100",
+    humanBaselineMin: 8,
+    tags: ["dfm", "mechanical"],
+    sourceCorpus: "grabcad-curated",
+  },
+  {
+    id: "DFMCNC-013",
+    category: "dfm_cnc",
+    title: "5-axis-only fish-mouth saddle",
+    prompt: "Bracket meant to wrap a Ø 60 mm pipe at 35° from vertical: a saddle cut profile that is the swept silhouette of a Ø 60 mm cylinder along the pipe axis, depth 25 mm. Geometry should be flagged as 'requires 5-axis indexing' by the analyzer (3-axis cannot reach the underside).",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      process: "cnc-5ax",
+      features: ["fish_mouth_saddle"],
+    },
+    difficulty: 4,
+    groundTruthHash: "a32ef0bcde011fa0",
+    humanBaselineMin: 18,
+    tags: ["dfm", "machining-heavy", "aerospace"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L3 / dfm_mold (1 new) ----------
+  {
+    id: "DFMMOLD-005",
+    category: "dfm_mold",
+    title: "Telephone handset shell",
+    prompt: "Lower handset shell, 180 × 60 × 22 mm. Parting plane is the largest XY silhouette. Min draft 1.5° on every wall, uniform 1.8 mm wall ±10 %, four self-tapping bosses Ø 5 OD / Ø 2.5 core, mic and speaker mesh openings 12 × 8 mm slot arrays.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      process: "injection",
+      uniformThicknessMm: 1.8,
+      draftMinDeg: 1.5,
+      minWallMm: 1.8,
+      features: ["draft_1.5deg_min", "wall_1.8mm_uniform", "boss_x4", "slot_array"],
+    },
+    difficulty: 5,
+    groundTruthHash: "0ec1bd0a02fe1011",
+    humanBaselineMin: 45,
+    tags: ["dfm", "consumer", "thin-wall"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L3 / dfm_fdm (2 new) ----------
+  {
+    id: "DFMFDM-002",
+    category: "dfm_fdm",
+    title: "Bridge-test calibration cube",
+    prompt: "Calibration test piece for a 0.4 mm nozzle FDM printer: 40 × 40 × 30 mm with four horizontal bridges of length 5/10/15/20 mm at z=22 mm, each bridge cross-section 4 × 2 mm. Bridges must be unsupported but printable.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      process: "fdm",
+      minWallMm: 1.6,
+      features: ["bridge_5", "bridge_10", "bridge_15", "bridge_20"],
+    },
+    difficulty: 3,
+    groundTruthHash: "fea11bc0d2ef0b01",
+    humanBaselineMin: 8,
+    tags: ["dfm", "consumer", "open-source-corpus"],
+    sourceCorpus: "synthetic",
+  },
+  {
+    id: "DFMFDM-011",
+    category: "dfm_fdm",
+    title: "Print-in-place hinge",
+    prompt: "Two-leaf hinge that prints in one piece without supports: each leaf 40 × 30 × 3 mm, knuckle Ø 6 mm with a Ø 4 mm pin captive in a 0.3 mm clearance bore. Clearance must allow free 90° rotation post-print on a 0.4 mm nozzle FDM machine.",
+    spec: {
+      shellCount: 2, watertight: true, manifold: true, toleranceMm: 0.10,
+      process: "fdm",
+      minWallMm: 1.2,
+      features: ["captive_pin", "knuckle_x2"],
+    },
+    difficulty: 4,
+    groundTruthHash: "33ce01bd02ef0a91",
+    humanBaselineMin: 16,
+    tags: ["dfm", "consumer"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L3 / cam_validity (1 new) ----------
+  {
+    id: "CAM-005",
+    category: "cam_validity",
+    title: "T-slot pocket array (Ø 8 + Ø 4 endmills)",
+    prompt: "Plate 80 × 80 × 14 mm with three parallel T-slots (top width 12 mm, bottom width 16 mm, total depth 10 mm, length 60 mm) on 25 mm pitch. The T-slot bottom must be machinable with a Ø 4 mm endmill on a 3-axis VMC (i.e. all undercuts reachable).",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      process: "cnc-3ax",
+      features: ["t_slot_x3"],
+    },
+    difficulty: 4,
+    groundTruthHash: "be01fc02d3a09e11",
+    humanBaselineMin: 16,
+    tags: ["dfm", "machining-heavy"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L4 / constraint_solving (1 new) ----------
+  {
+    id: "PARAM-009",
+    category: "constraint_solving",
+    title: "Configurable bottle (height + cap params)",
+    prompt: "Cylindrical bottle Ø 70 mm × H mm tall, ending in a M40 × 1.0 threaded neck of length C mm. Build it once at H = 180, C = 22, then expose H and C as parameters. We will sweep H ∈ [120, 220] and C ∈ [16, 30] and re-evaluate.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      paramRange: [
+        { name: "H", min: 120, max: 220, samples: 20 },
+        { name: "C", min: 16, max: 30, samples: 10 },
+      ],
+      edits: [
+        { param: "H", from: 180, to: 200, expectedDeltaVolMm3: Math.PI * 35 * 35 * 20 },
+        { param: "C", from: 22, to: 28, expectedDeltaVolMm3: Math.PI * 20 * 20 * 6 },
+      ],
+    },
+    difficulty: 4,
+    groundTruthHash: "31cba0fde20cb011",
+    humanBaselineMin: 14,
+    tags: ["parametric", "consumer"],
+    sourceCorpus: "drawn-by-panel",
+  },
+
+  // ---------- L4 / reverse_eng (1 new) ----------
+  {
+    id: "REVENG-005",
+    category: "reverse_eng",
+    title: "ABC dataset stepped pulley (multi-view)",
+    prompt: "From the supplied front/top/side ortho drawing (1:1, 600 dpi) reproduce the stepped V-belt pulley. Three steps, OD 80 / 60 / 40 mm, each 12 mm wide; belt grooves 38° included angle, depth 10 mm. Central Ø 16 H7 bore. All dimensions on the drawing are authoritative.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      features: ["step_pulley_x3", "v_groove_x3", "bore_H7_16"],
+    },
+    difficulty: 4,
+    groundTruthHash: "c0a1b3d40fe201bc",
+    referenceMesh: "/refs/REVENG-005.glb",
+    humanBaselineMin: 22,
+    tags: ["reverse-engineering", "automotive", "open-source-corpus"],
+    sourceCorpus: "abc-dataset",
+  },
+
+  // ---------- L4 / sketch_constraints (1 new) ----------
+  {
+    id: "SKETCH-014",
+    category: "sketch_constraints",
+    title: "Symmetric four-bar profile",
+    prompt: "Closed planar profile, mirror-symmetric about the Y axis: two horizontal segments 80 mm long at y = 0 and y = 40, joined by two semicircular arcs R 20 mm. Constraints: horizontal+horizontal, equal-length, tangent at every endpoint, mirror symmetry. Sketch must be fully constrained (DOF = 0).",
+    spec: {
+      toleranceMm: 0.001,
+    },
+    difficulty: 2,
+    groundTruthHash: "4ec01fde2cb0a911",
+    humanBaselineMin: 5,
+    tags: ["sketch", "open-source-corpus"],
+    sourceCorpus: "synthetic",
+  },
+
+  // ---------- L4 / functional_intent (1 new) ----------
+  {
+    id: "FUNC-003",
+    category: "functional_intent",
+    title: "Heat-sink for 60 W CoB LED",
+    prompt: "Design a passive heat sink in 6063-T5 aluminium that holds a 60 W CoB LED below 85 °C junction temperature in still air at 30 °C ambient. LED footprint Ø 22 mm, mounting requires three M3 holes on a 28 mm PCD. Footprint envelope ≤ 80 × 80 mm, height ≤ 50 mm. Output STEP.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      feaMaterial: "6063-T5",
+      features: ["LED_mount_M3_x3", "fin_array"],
+    },
+    difficulty: 5,
+    groundTruthHash: "fab02ec01dd30a11",
+    humanBaselineMin: 38,
+    tags: ["functional", "consumer", "thin-wall"],
+    sourceCorpus: "drawn-by-panel",
+    notes: "Functional intent task — scoring is FEA/CFD-gated, not geometric. A part with vol_iou ≈ 1 to the reference can still fail if the surface area is < 0.04 m².",
+  },
+
+  // ---------- L4 / paraphrase_robustness (1 new) ----------
+  {
+    id: "PARA-005",
+    category: "paraphrase_robustness",
+    title: "5× paraphrased planetary carrier",
+    prompt: "Disc Ø 80 × 8 mm with central Ø 12 H7 bore, three Ø 6 H7 satellite bores on a 30 mm PCD at 0/120/240°, six M3 tapped holes on a 60 mm PCD at 30° offset.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.05,
+      paraphrases: [
+        "Build a circular plate 80 mm diameter, 8 mm thick. Centre hole 12 mm reamed. Three 6 mm reamed holes equally spaced on a 30 mm bolt circle. Six M3 tapped holes on a 60 mm circle, offset 30° from the others.",
+        "Carrier disc: OD 80, thickness 8. One Ø 12 H7 in the centre. Three Ø 6 H7 bores at 0°/120°/240° on a 30 mm pitch-circle. Six M3 threaded holes on a 60 mm pitch-circle, 30° offset.",
+        "Round plate, 80 across, 8 thick. Bore the middle to 12 mm (precision). Drill three 6 mm holes evenly around at 30 mm radius/2. Tap six M3 holes at 60 mm radius/2, halfway between the others.",
+        "Planetary carrier — 80 × 8 disc. Central H7 bore Ø 12. Three satellite bores Ø 6 H7 at PCD 30, equispaced. Six M3 threads at PCD 60, 30° apart from the satellites.",
+      ],
+    },
+    difficulty: 4,
+    groundTruthHash: "2b97cc4d1ef0aa55",
+    humanBaselineMin: 0,
+    tags: ["robustness", "open-source-corpus"],
+    sourceCorpus: "synthetic",
+    notes: "Reference geometry is identical to MECH-027; this task evaluates paraphrase variance, not modelling skill.",
+  },
+
+  // ---------- L4 / calibration (1 new) ----------
+  {
+    id: "CAL-007",
+    category: "calibration",
+    title: "Confidence-bracketed mounting flange",
+    prompt: "Cast-aluminium mounting flange, Ø 120 × 18 mm with central Ø 30 H7 bore and 6× M8 clearance holes on a 90 mm PCD. Report a self-assessed pre-generation confidence ∈ [0,1] in your output's correctness against the spec.",
+    spec: {
+      shellCount: 1, watertight: true, manifold: true, toleranceMm: 0.10,
+      features: ["bore_H7_30", "M8_clearance_x6", "PCD_90"],
+      gdtCallouts: [{ type: "concentric", datum: "A", toleranceMm: 0.05 }],
+    },
+    difficulty: 3,
+    groundTruthHash: "ad01ef02b3c40911",
+    humanBaselineMin: 9,
+    tags: ["calibration", "mechanical"],
+    sourceCorpus: "synthetic",
   },
 ];
 

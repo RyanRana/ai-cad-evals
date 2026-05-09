@@ -101,6 +101,13 @@ export interface Task {
   groundTruthHash: string;
   referenceMesh?: string;
   notes?: string;
+  // v0.6 additions:
+  humanBaselineMin?: number;   // wall-clock minutes for a senior mech-E, n=4 panel.
+  tags?: string[];             // domain tags: "aerospace", "automotive", "consumer",
+                               // "machining-heavy", "thin-wall", "high-precision",
+                               // "open-source-corpus", etc.
+  sourceCorpus?: "synthetic" | "grabcad-curated" | "abc-dataset"
+               | "fusion360-gallery" | "ifc-bim" | "drawn-by-panel";
 }
 
 export interface TaskSpec {

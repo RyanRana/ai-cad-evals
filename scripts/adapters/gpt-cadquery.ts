@@ -45,7 +45,7 @@ export async function runGptCadQuery(prompt: string, outDir: string, _seed: numb
     });
     if (r.ok) {
       const cost = (totalIn * 0.000010) + (totalOut * 0.000040);
-      return { artifactPath: stepPath, format: "STEP" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
+      return { artifactPath: stepPath, scriptPath, format: "STEP" as const, tokensIn: totalIn, tokensOut: totalOut, costUsd: +cost.toFixed(4) };
     }
     messages.push({ role: "assistant", content: text });
     messages.push({ role: "user", content: `Execution failed:\n\n${r.err}\n\nReturn corrected python.` });
