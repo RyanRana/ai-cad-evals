@@ -54,6 +54,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <Link href="/categories" className="hover:text-[var(--accent)]">Categories</Link>
               <Link href="/tasks" className="hover:text-[var(--accent)]">Tasks</Link>
               <Link href="/agents" className="hover:text-[var(--accent)]">Agents</Link>
+              <Link href="/playground" className="text-[var(--accent)] hover:underline underline-offset-4">Playground</Link>
               <Link href="/design" className="hover:text-[var(--accent)]">Design</Link>
               <Link href="/methodology" className="hover:text-[var(--accent)]">Methodology</Link>
             </nav>
