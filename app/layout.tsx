@@ -9,7 +9,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "CAD-Bench — research-grade evaluation of AI CAD agents",
   description:
-    "An open benchmark for AI CAD agents. 194 prompts across 10 categories scored on volumetric IoU, Chamfer, BREP fidelity, DFM, and parametric editability with bootstrapped 95% CIs.",
+    "An open benchmark for AI CAD agents. 308 prompts across 20 categories in 4 layers (geometry, engineering, manufacturing, cognition), scored with bootstrap CIs, 2PL IRT ability θ, worst-case p5, and a (capability, cost) Pareto frontier.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -20,13 +20,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
             <Link href="/" className="font-mono text-sm tracking-tight">
               <span className="inline-block w-1.5 h-1.5 bg-current align-middle mr-2" />
-              CAD-Bench<span className="text-[var(--muted)]">/v0.4</span>
+              CAD-Bench<span className="text-[var(--muted)]">/v0.5</span>
             </Link>
             <nav className="flex items-center gap-6 text-sm">
               <Link href="/" className="hover:underline underline-offset-4">Leaderboard</Link>
               <Link href="/categories" className="hover:underline underline-offset-4">Categories</Link>
               <Link href="/tasks" className="hover:underline underline-offset-4">Tasks</Link>
               <Link href="/agents" className="hover:underline underline-offset-4">Agents</Link>
+              <Link href="/design" className="hover:underline underline-offset-4">Design</Link>
               <Link href="/methodology" className="hover:underline underline-offset-4">Methodology</Link>
             </nav>
           </div>
@@ -34,7 +35,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10">{children}</main>
         <footer className="border-t mt-16">
           <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between text-xs text-[var(--muted)]">
-            <span className="font-mono">CAD-Bench v0.4 · sweep 2026-04-12 · seed 42 · n=194</span>
+            <span className="font-mono">CAD-Bench v0.5 · sweep 2026-04-12 · seed 42 · n=308</span>
             <span>open evaluation harness · MIT</span>
           </div>
         </footer>
