@@ -1,0 +1,140 @@
+import type { MetricDef } from "../types";
+
+// Formal metric definitions used across the suite. Each is implementable
+// from artifact-level data (STEP/STL + spec). See /methodology for the
+// numerical reference implementations.
+export const METRICS: MetricDef[] = [
+  {
+    id: "vol_iou",
+    name: "Volumetric IoU",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "|V(A) ∩ V(B)| / |V(A) ∪ V(B)| evaluated on a 1 mm³ voxel grid after rigid alignment by ICP (≤ 5° rotation, ≤ 2 mm translation).",
+    reference: "Jaccard 1912; voxelization cf. Nooruddin & Turk 2003.",
+  },
+  {
+    id: "chamfer",
+    name: "Bidirectional Chamfer Distance",
+    unit: "mm",
+    higherIsBetter: false,
+    formula: "0.5·E_{x∈X}[min_{y∈Y} ||x−y||₂] + 0.5·E_{y∈Y}[min_{x∈X} ||x−y||₂] over 50 k uniformly-sampled surface points.",
+    reference: "Fan, Su & Guibas 2017.",
+  },
+  {
+    id: "hausdorff",
+    name: "Hausdorff Distance (H₉₅)",
+    unit: "mm",
+    higherIsBetter: false,
+    formula: "max(sup_x inf_y d(x,y), sup_y inf_x d(x,y)) reported at the 95th percentile to discount outlier triangulation noise.",
+  },
+  {
+    id: "normal_consistency",
+    name: "Normal Consistency",
+    unit: "cosine",
+    higherIsBetter: true,
+    formula: "E[|n_A · n_{NN(A→B)}|] over corresponding nearest-neighbor surface samples after orientation alignment.",
+    reference: "Mescheder et al. 2019.",
+  },
+  {
+    id: "watertight",
+    name: "Watertightness",
+    unit: "boolean",
+    higherIsBetter: true,
+    formula: "True iff every edge in the output mesh is shared by exactly two faces and the BREP shell has no naked edges (OpenCascade ShapeAnalysis_Wire).",
+  },
+  {
+    id: "manifold",
+    name: "Edge-Manifoldness",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "1 − |E_nm|/|E|, where E_nm are edges incident to ≠ 2 faces.",
+  },
+  {
+    id: "euler_compliance",
+    name: "Euler–Poincaré Compliance",
+    unit: "boolean",
+    higherIsBetter: true,
+    formula: "True iff V − E + F = 2(S − G) holds for the reported shell count S and genus G (matches reference within ±0).",
+  },
+  {
+    id: "step_roundtrip",
+    name: "STEP Round-trip Chamfer",
+    unit: "mm",
+    higherIsBetter: false,
+    formula: "Chamfer distance after exporting the candidate to AP242 STEP and re-importing through OpenCascade — measures BREP fidelity loss.",
+  },
+  {
+    id: "dfm_score",
+    name: "DFM Composite",
+    unit: "0-100",
+    higherIsBetter: true,
+    formula: "0.30·draft_pass + 0.25·min_wall_pass + 0.20·undercut_free + 0.15·tool_access(3-axis) + 0.10·overhang≤45° (each indicator 0/1, scaled ×100).",
+    reference: "Boothroyd-Dewhurst DFM, machinist heuristics from MIT 2.008.",
+  },
+  {
+    id: "param_edit_acc",
+    name: "Parametric Edit Accuracy",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "Fraction of parametric edits that produce ΔV within ±5 % of the analytically expected ΔV without breaking topology.",
+  },
+  {
+    id: "constraint_solve_rate",
+    name: "Constraint Solve Rate",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "Fraction of sketch constraints that resolve to fully-determined (DOF=0) sketches under the agent’s native solver.",
+  },
+  {
+    id: "mating_clearance",
+    name: "Mating Clearance Compliance",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "Fraction of mating pairs whose realized clearance falls inside the spec’d [c_min, c_max] interval after assembly mate.",
+  },
+  {
+    id: "feature_recall",
+    name: "Feature Recall",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "|F_pred ∩ F_true| / |F_true|, where features are auto-detected via OpenCascade BRepFeat then matched by type+location (≤2 mm).",
+  },
+  {
+    id: "pass_at_1",
+    name: "Pass@1",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "1[Vol_IoU ≥ τ ∧ DFM ≥ 70 ∧ watertight] on a single sample. τ scales with category difficulty (0.85 / 0.75 / 0.65).",
+    reference: "Chen et al. 2021 (HumanEval).",
+  },
+  {
+    id: "pass_at_5",
+    name: "Pass@5",
+    unit: "ratio",
+    higherIsBetter: true,
+    formula: "Unbiased estimator 1 − C(n−c, k)/C(n, k) with n=5, k=5; uses the same gating predicate as Pass@1.",
+  },
+  {
+    id: "latency_p50",
+    name: "Latency p50",
+    unit: "s",
+    higherIsBetter: false,
+    formula: "Median wall-clock time from prompt submission to artifact return, measured client-side.",
+  },
+  {
+    id: "latency_p95",
+    name: "Latency p95",
+    unit: "s",
+    higherIsBetter: false,
+    formula: "95th-percentile wall-clock latency over n ≥ 30 trials.",
+  },
+  {
+    id: "cost_per_task",
+    name: "Cost per Task",
+    unit: "USD",
+    higherIsBetter: false,
+    formula: "Σ provider invoice line-items per generated artifact (input+output tokens, image tokens, fixed per-call surcharges).",
+  },
+];
+
+export const metricById = (id: string) => METRICS.find((m) => m.id === id);

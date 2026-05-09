@@ -1,0 +1,5 @@
+pythonocc-core>=7.8.1
+trimesh>=4.4
+numpy>=1.26
+scipy>=1.11
+rtree>=1.2

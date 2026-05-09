@@ -1,0 +1,333 @@
+import type { Task } from "../types";
+
+// Representative 24-task slice of the full 194-task CAD-Bench v0.4 suite.
+// Every prompt is verbatim. Spec values come from the canonical reference
+// STEP file (sha256 in groundTruthHash). Hash truncated to 16 chars for
+// display; full digests live alongside the artifacts in /public/refs.
+export const TASKS: Task[] = [
+  // ---------- primitives ----------
+  {
+    id: "PRIM-001",
+    category: "primitives",
+    title: "Hollow cylinder (60 × 40 × 100)",
+    prompt:
+      "Model a hollow cylinder with outer diameter 60 mm, inner diameter 40 mm, height 100 mm. Origin at the centroid of the bottom face. Output a watertight solid.",
+    spec: {
+      volumeMm3: Math.round(Math.PI * (30 * 30 - 20 * 20) * 100),
+      surfaceAreaMm2: Math.round(2 * Math.PI * (30 + 20) * 100 + 2 * Math.PI * (30 * 30 - 20 * 20)),
+      boundingBoxMm: [60, 60, 100],
+      shellCount: 1,
+      euler: 0,
+      genus: 1,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.05,
+    },
+    difficulty: 1,
+    groundTruthHash: "e3b0c44298fc1c14",
+  },
+  {
+    id: "PRIM-007",
+    category: "primitives",
+    title: "Right hexagonal prism with pitch fillet",
+    prompt:
+      "Hexagonal prism, across-flats 24 mm, height 12 mm, top edge filleted at R 0.4 mm. Solid, manifold, origin centred.",
+    spec: {
+      boundingBoxMm: [27.71, 24.0, 12.0],
+      shellCount: 1,
+      euler: 2,
+      genus: 0,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.02,
+    },
+    difficulty: 2,
+    groundTruthHash: "4f8d1f2cba83a911",
+  },
+
+  // ---------- boolean robustness ----------
+  {
+    id: "BOOL-003",
+    category: "boolean_robustness",
+    title: "Coplanar-face union (knife-edge stress)",
+    prompt:
+      "Two 20 × 20 × 20 mm cubes placed so their +X / −X faces are exactly coplanar. Union them and fillet the shared edge at R 1 mm. The result must be a single watertight body.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      euler: 2,
+      genus: 0,
+      toleranceMm: 0.05,
+    },
+    difficulty: 4,
+    groundTruthHash: "9a1b21d83fc04421",
+    notes: "Stresses ε-tolerance handling — many kernels emit a sliver face here.",
+  },
+  {
+    id: "BOOL-009",
+    category: "boolean_robustness",
+    title: "High-genus subtraction (lattice block)",
+    prompt:
+      "Subtract a 7 × 7 × 7 array of 4 mm cylindrical holes from a 60 × 60 × 60 mm cube. Holes spaced at 8 mm pitch, fully through. Genus = 343.",
+    spec: {
+      shellCount: 1,
+      euler: -684, // V−E+F = 2(S−G), S=1, G=343
+      genus: 343,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.02,
+    },
+    difficulty: 5,
+    groundTruthHash: "771ec0aa1bd2c6f3",
+  },
+
+  // ---------- parametric mechanical parts ----------
+  {
+    id: "MECH-014",
+    category: "parametric_mech",
+    title: "L-bracket with M6 + slotted hole",
+    prompt:
+      "Right-angle L-bracket, leg lengths 60 mm and 40 mm, thickness 5 mm. Through-hole Ø 6.6 mm with 1.5 × 45° chamfer on the long leg, centred 30 mm from the bend. Slotted hole 8 × 16 mm on the short leg, centred 20 mm from the bend, slot major axis parallel to the bend. Position tolerance ±0.1 mm. Output STEP AP242.",
+    spec: {
+      volumeMm3: 60 * 40 * 5 - Math.PI * 3.3 * 3.3 * 5 - (8 * 16 - Math.PI * 4 * 4) * 5,
+      shellCount: 1,
+      genus: 2,
+      watertight: true,
+      manifold: true,
+      features: ["bend_R5", "thru_hole_M6_clearance", "chamfer_1.5x45", "slot_8x16"],
+      toleranceMm: 0.10,
+    },
+    difficulty: 3,
+    groundTruthHash: "1f3a5e90c44b2210",
+  },
+  {
+    id: "MECH-022",
+    category: "parametric_mech",
+    title: "Stepped shaft with retaining-ring groove",
+    prompt:
+      "Stepped shaft: Ø 20 × 30 mm long, then Ø 16 × 25 mm long, then Ø 12 × 20 mm long. On the Ø 16 step, machine an external retaining-ring groove per DIN 471 for a 16 mm shaft (groove Ø 15.2 ± 0.05 mm, width 1.1 +0.14/0 mm, edge 7.0 mm from the Ø20→Ø16 shoulder).",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      features: ["groove_DIN471_16", "shoulder_20_16", "shoulder_16_12"],
+      toleranceMm: 0.05,
+    },
+    difficulty: 4,
+    groundTruthHash: "84a92efb1c0d4e6f",
+  },
+  {
+    id: "MECH-027",
+    category: "parametric_mech",
+    title: "Planetary-gear carrier plate",
+    prompt:
+      "Disc Ø 80 mm × 8 mm with: (a) central Ø 12 H7 bore, (b) 3 satellite bores Ø 6 H7 on a 30 mm PCD at 0/120/240°, (c) 6 M3 tapped holes on a 60 mm PCD at 30° offset, depth 6 mm, ISO 261 thread. True-position 0.05 mm to datum A (central bore axis).",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      features: ["bore_H7_12", "bore_H7_6_x3", "thread_M3x6_x6", "PCD_30", "PCD_60"],
+      toleranceMm: 0.05,
+    },
+    difficulty: 5,
+    groundTruthHash: "2b97cc4d1ef0aa55",
+  },
+
+  // ---------- assembly mating ----------
+  {
+    id: "ASM-005",
+    category: "assembly_mating",
+    title: "Pin-in-hole, H7/g6 sliding fit",
+    prompt:
+      "Cylindrical pin Ø 10 g6 × 40 mm long, chamfered 1×45° on both ends. Held-out partner has a Ø 10 H7 through-hole; the assembled clearance must lie in [0.005, 0.029] mm.",
+    spec: {
+      matingPart: "/refs/ASM-005-partner.step",
+      expectedClearanceMm: { min: 0.005, max: 0.029 },
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.005,
+    },
+    difficulty: 3,
+    groundTruthHash: "5cd0a7e3b4f10918",
+  },
+  {
+    id: "ASM-011",
+    category: "assembly_mating",
+    title: "Dovetail slide (60° flanks)",
+    prompt:
+      "Male dovetail: 30 mm tall, 50 mm wide at the base, 60° flank angle, 100 mm long. Held-out female slot is 0.04 mm wider on each flank for free running. Assembled clearance must be 0.04 ± 0.01 mm normal to each flank.",
+    spec: {
+      matingPart: "/refs/ASM-011-partner.step",
+      expectedClearanceMm: { min: 0.03, max: 0.05 },
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.01,
+    },
+    difficulty: 4,
+    groundTruthHash: "773bb55ecd0c1a2e",
+  },
+
+  // ---------- DFM compliance ----------
+  {
+    id: "DFM-002",
+    category: "dfm_compliance",
+    title: "Injection-mouldable enclosure half",
+    prompt:
+      "Lower half of a hand-held enclosure, 120 × 60 × 25 mm, parting line in the XY plane. Constraint set: ≥1° draft on every vertical wall, uniform 2.0 mm wall, no closed voids, four self-tapping bosses (Ø 4 mm OD, Ø 2 mm core, with gussets), shut-off ledge 0.5 mm overlap.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      features: ["draft_1deg_min", "wall_2.0mm_uniform", "boss_x4", "shutoff_ledge"],
+      toleranceMm: 0.10,
+    },
+    difficulty: 4,
+    groundTruthHash: "1abf0e5d9c3b22d4",
+  },
+  {
+    id: "DFM-008",
+    category: "dfm_compliance",
+    title: "FDM-printable hinge (no support)",
+    prompt:
+      "Living-hinge 80 × 30 × 6 mm with two 40 × 30 × 6 mm leaves and a 0.5 mm hinge web. All overhangs ≤ 45° from build plate, single body, FDM-printable without support material on a 0.4 mm nozzle.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      features: ["hinge_web_0.5", "no_overhang_gt45"],
+      toleranceMm: 0.10,
+    },
+    difficulty: 3,
+    groundTruthHash: "44e92cd1aa7f3380",
+  },
+
+  // ---------- BREP fidelity ----------
+  {
+    id: "BREP-004",
+    category: "brep_fidelity",
+    title: "NURBS-handle goblet (G2 swept loft)",
+    prompt:
+      "Goblet: cup is a swept-revolved NURBS surface (12 control points along generatrix), stem is a 10 mm chamfered cylinder, base is a Ø 70 × 5 mm disc. Cup-to-stem and stem-to-base junctions must be G2 continuous. Export AP242.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      features: ["g2_continuity_cup_stem", "g2_continuity_stem_base"],
+      toleranceMm: 0.05,
+    },
+    difficulty: 4,
+    groundTruthHash: "9bb19af0271ac46e",
+  },
+
+  // ---------- constraint solving ----------
+  {
+    id: "PARAM-006",
+    category: "constraint_solving",
+    title: "Editable flange (bolt circle param sweep)",
+    prompt:
+      "Flange: hub Ø 30 × 20 mm, plate Ø 100 × 8 mm, six Ø 7 mm bolt holes on PCD ‘D’. Build it once at D = 80 mm, then expose ‘D’ as a parameter. We will edit D to 70, 75, 85, 90 mm and re-evaluate.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      edits: [
+        { param: "D", from: 80, to: 70, expectedDeltaVolMm3: 0 }, // hole volume invariant
+        { param: "D", from: 70, to: 75, expectedDeltaVolMm3: 0 },
+        { param: "D", from: 75, to: 85, expectedDeltaVolMm3: 0 },
+        { param: "D", from: 85, to: 90, expectedDeltaVolMm3: 0 },
+      ],
+      toleranceMm: 0.05,
+    },
+    difficulty: 3,
+    groundTruthHash: "0ce7b1d445aa9088",
+  },
+  {
+    id: "PARAM-013",
+    category: "constraint_solving",
+    title: "Editable bracket (length+30 %, hole→M8)",
+    prompt:
+      "Build the L-bracket from MECH-014, then perform two parametric edits in sequence: (1) increase the long leg from 60 mm → 78 mm; (2) change the through-hole from M6 clearance to M8 clearance (Ø 9.0 mm). Topology must remain valid throughout.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      edits: [
+        { param: "leg_long", from: 60, to: 78, expectedDeltaVolMm3: 18 * 40 * 5 },
+        { param: "hole_d", from: 6.6, to: 9.0, expectedDeltaVolMm3: -Math.PI * (4.5 * 4.5 - 3.3 * 3.3) * 5 },
+      ],
+      toleranceMm: 0.10,
+    },
+    difficulty: 4,
+    groundTruthHash: "fab07d2c5e914421",
+  },
+
+  // ---------- reverse engineering ----------
+  {
+    id: "REVENG-002",
+    category: "reverse_eng",
+    title: "Three-view ortho → bracket",
+    prompt:
+      "From the supplied 1:1 front/top/side dimensioned drawing (PNG, 600 dpi) reproduce the part. All dimensions and tolerances on the drawing are authoritative.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.10,
+    },
+    difficulty: 4,
+    groundTruthHash: "30d72b41ae9c0014",
+    referenceMesh: "/refs/REVENG-002.glb",
+  },
+  {
+    id: "REVENG-009",
+    category: "reverse_eng",
+    title: "Three-view ortho → housing with cores",
+    prompt:
+      "Reproduce the 80 × 60 × 40 mm housing from the supplied multi-view drawing including all M4 tapped holes, draft, and ribs. Drawing follows ASME Y14.5-2018 third-angle convention.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      features: ["thread_M4_x6", "rib_x4", "draft_1deg"],
+      toleranceMm: 0.10,
+    },
+    difficulty: 5,
+    groundTruthHash: "60189cae3b771acc",
+  },
+
+  // ---------- sketch constraints ----------
+  {
+    id: "SKETCH-003",
+    category: "sketch_constraints",
+    title: "Tangent-arc transition profile",
+    prompt:
+      "Closed profile: horizontal segment 50 mm, tangent-arc R 20 mm sweeping 90°, vertical segment 50 mm, tangent-arc R 20 mm sweeping 90° back to start. Apply tangent + equal-length + perpendicular constraints. Sketch must be fully constrained (DOF = 0).",
+    spec: {
+      toleranceMm: 0.001,
+    },
+    difficulty: 2,
+    groundTruthHash: "12aa30c87ef00921",
+  },
+
+  // ---------- freeform surfaces ----------
+  {
+    id: "SURF-002",
+    category: "freeform_surfaces",
+    title: "Compressor blade (NACA-style)",
+    prompt:
+      "Single compressor blade: 60 mm chord, 80 mm span, 12° twist root-to-tip, NACA-65-(12)10 thickness distribution along the camber line. G2 continuous suction and pressure surfaces, sharp trailing edge at 0.3 mm.",
+    spec: {
+      shellCount: 1,
+      watertight: true,
+      manifold: true,
+      toleranceMm: 0.05,
+    },
+    difficulty: 5,
+    groundTruthHash: "8de14b209c01ac72",
+  },
+];
+
+export const taskById = (id: string) => TASKS.find((t) => t.id === id);
