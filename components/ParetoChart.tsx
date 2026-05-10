@@ -84,10 +84,20 @@ export function ParetoChart({
 
 function shortName(name: string) {
   return name
-    .replace("Claude Opus 4.7 → CadQuery", "Claude→CQ")
-    .replace("Claude Opus 4.7 → OpenSCAD", "Claude→SCAD")
+    .replace("Claude Opus 4.7 → CadQuery", "Opus→CQ")
+    .replace("Claude Opus 4.7 → OpenSCAD", "Opus→SCAD")
+    .replace("Claude Sonnet 4.6 → CadQuery", "Sonnet→CQ")
+    .replace("Claude Haiku 4.5 → CadQuery", "Haiku→CQ")
+    .replace("OpenAI o4 (reasoning) → CadQuery", "o4→CQ")
     .replace("GPT-5 → CadQuery", "GPT-5→CQ")
+    .replace("GPT-5 Mini → OpenSCAD", "GPT-5m→SCAD")
     .replace("Gemini 2.5 Pro → OpenSCAD", "Gemini→SCAD")
+    .replace("Gemini 2.5 Flash → CadQuery", "Flash→CQ")
+    .replace("DeepSeek R1 (reasoning) → CadQuery", "DSR1→CQ")
+    .replace("Llama 3.3 70B → OpenSCAD", "Llama→SCAD")
+    .replace("Qwen3 Coder → CadQuery", "Qwen→CQ")
+    .replace("Hunyuan3D-2", "Hunyuan3D")
+    .replace("CAD-Coder R1", "CADCoder")
     .replace("Zoo Text-to-CAD", "Zoo")
     .replace("Adam (CADcrush)", "Adam")
     .replace("Trellis 3D", "Trellis")

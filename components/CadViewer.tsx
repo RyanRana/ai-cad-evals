@@ -65,6 +65,113 @@ function mulberry32(seed: number) {
   };
 }
 
+// ---- shared-context viewer manager ---------------------------------------
+// Browsers cap simultaneous WebGL contexts at ~16. We sidestep the cap with
+// a single offscreen WebGL renderer that draws each viewer's scene+camera
+// in turn into per-viewer 2D canvases via drawImage. One context for the
+// whole page, no matter how many viewers, no flicker, no eviction.
+//
+// Each viewer renders once on mount and only re-renders when marked dirty
+// (orbit / wheel / resize). 21 static viewers cost ~21 RAF ticks of work
+// once and ~zero ongoing.
+
+type ViewerEntry = {
+  destCanvas: HTMLCanvasElement;
+  scene: THREE.Scene;
+  camera: THREE.PerspectiveCamera;
+  dirty: boolean;
+  width: number;
+  height: number;
+  dpr: number;
+};
+
+let manager: {
+  off: HTMLCanvasElement;
+  renderer: THREE.WebGLRenderer;
+  viewers: Set<ViewerEntry>;
+} | null = null;
+
+function getManager() {
+  if (manager) return manager;
+  if (typeof window === "undefined") return null;
+
+  const off = document.createElement("canvas");
+  off.width = 16;
+  off.height = 16;
+  const renderer = new THREE.WebGLRenderer({
+    canvas: off,
+    antialias: true,
+    alpha: true,
+    // drawImage from a WebGL canvas only works reliably when the buffer
+    // isn't cleared on the next compositor frame. Trades a small perf hit
+    // for correctness across browsers.
+    preserveDrawingBuffer: true,
+  });
+  renderer.shadowMap.enabled = true;
+
+  const viewers = new Set<ViewerEntry>();
+
+  // Render at most a handful of dirty viewers per frame to avoid a large
+  // initial-mount stall when 20 tiles all mark dirty at once.
+  const MAX_PER_FRAME = 4;
+
+  function tick() {
+    if (!manager) return;
+    let rendered = 0;
+    for (const v of viewers) {
+      if (!v.dirty) continue;
+      if (v.width === 0 || v.height === 0) continue;
+      const rw = Math.max(1, Math.floor(v.width * v.dpr));
+      const rh = Math.max(1, Math.floor(v.height * v.dpr));
+      renderer.setSize(rw, rh, false);
+      v.camera.aspect = v.width / v.height;
+      v.camera.updateProjectionMatrix();
+      renderer.render(v.scene, v.camera);
+
+      if (v.destCanvas.width !== rw || v.destCanvas.height !== rh) {
+        v.destCanvas.width = rw;
+        v.destCanvas.height = rh;
+      }
+      const ctx = v.destCanvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, rw, rh);
+        ctx.drawImage(off, 0, 0);
+      }
+      v.dirty = false;
+      rendered++;
+      if (rendered >= MAX_PER_FRAME) break;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  manager = { off, renderer, viewers };
+  return manager;
+}
+
+function registerViewer(v: ViewerEntry) {
+  const m = getManager();
+  if (!m) return;
+  m.viewers.add(v);
+  v.dirty = true;
+}
+
+function unregisterViewer(v: ViewerEntry) {
+  if (!manager) return;
+  manager.viewers.delete(v);
+}
+
+function disposeScene(scene: THREE.Scene) {
+  scene.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (m.geometry) m.geometry.dispose();
+    if (m.material) {
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      mats.forEach((mat) => mat.dispose());
+    }
+  });
+}
+
 export function CadViewer({
   shape,
   height = 360,
@@ -83,22 +190,13 @@ export function CadViewer({
     if (!ref.current) return;
     if (degrade?.failed) return; // failure tile is rendered in JSX below
     const el = ref.current;
-    const w = el.clientWidth;
-    const h = height;
 
     const scene = new THREE.Scene();
     scene.background = null;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(w, h);
-    renderer.shadowMap.enabled = true;
-    el.appendChild(renderer.domElement);
-
     const mesh = buildMesh(shape, degrade);
     scene.add(mesh);
 
-    // Wireframe overlay to read topology cleanly. Skip on failure / bbox-only.
     if (!degrade?.bboxOnly) {
       const wire = new THREE.LineSegments(
         new THREE.EdgesGeometry((mesh.children[0] as THREE.Mesh).geometry, 18),
@@ -106,18 +204,16 @@ export function CadViewer({
           color: new THREE.Color(0x222222),
           transparent: true,
           opacity: degrade?.shading === "facets" ? 0.45 : 0.32,
-        })
+        }),
       );
       mesh.add(wire);
     }
 
-    // Ground grid.
     const grid = new THREE.GridHelper(400, 40, 0x9c9c9c, 0xd6d3c7);
     (grid.material as THREE.Material).opacity = 0.45;
     (grid.material as THREE.Material).transparent = true;
     scene.add(grid);
 
-    // Lights.
     scene.add(new THREE.AmbientLight(0xffffff, 0.55));
     const key = new THREE.DirectionalLight(0xffffff, 0.9);
     key.position.set(120, 200, 120);
@@ -127,14 +223,15 @@ export function CadViewer({
     fill.position.set(-120, 60, -100);
     scene.add(fill);
 
-    // Frame to bbox.
     const bb = new THREE.Box3().setFromObject(mesh);
     const size = new THREE.Vector3();
     bb.getSize(size);
     const center = new THREE.Vector3();
     bb.getCenter(center);
     const maxDim = Math.max(size.x, size.y, size.z);
-    const camera = new THREE.PerspectiveCamera(35, w / h, 1, 4000);
+
+    const initW = Math.max(1, el.clientWidth);
+    const camera = new THREE.PerspectiveCamera(35, initW / height, 1, 4000);
     camera.position.set(center.x + maxDim * 1.6, center.y + maxDim * 1.4, center.z + maxDim * 1.6);
     camera.lookAt(center);
 
@@ -148,12 +245,36 @@ export function CadViewer({
     });
     setInfo({ tris: Math.round(triCount), bbox: [+size.x.toFixed(1), +size.y.toFixed(1), +size.z.toFixed(1)] });
 
-    // Free-spin orbit (mouse drag rotates yaw/pitch around centroid; wheel zooms).
+    // Per-viewer destination canvas — a normal 2D canvas, no WebGL context.
+    const dest = document.createElement("canvas");
+    dest.style.display = "block";
+    dest.style.width = "100%";
+    dest.style.height = "100%";
+    dest.style.touchAction = "none";
+    el.appendChild(dest);
+
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const entry: ViewerEntry = {
+      destCanvas: dest,
+      scene,
+      camera,
+      dirty: true,
+      width: initW,
+      height,
+      dpr,
+    };
+    registerViewer(entry);
+
+    // Orbit controls — track yaw/pitch/radius, mark dirty on any change.
     let dragging = false;
     let yaw = Math.atan2(camera.position.x - center.x, camera.position.z - center.z);
-    let pitch = Math.atan2(camera.position.y - center.y, Math.hypot(camera.position.x - center.x, camera.position.z - center.z));
+    let pitch = Math.atan2(
+      camera.position.y - center.y,
+      Math.hypot(camera.position.x - center.x, camera.position.z - center.z),
+    );
     let radius = camera.position.distanceTo(center);
-    let lastX = 0, lastY = 0;
+    let lastX = 0;
+    let lastY = 0;
 
     function place() {
       pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
@@ -163,49 +284,47 @@ export function CadViewer({
         center.z + radius * Math.cos(pitch) * Math.cos(yaw),
       );
       camera.lookAt(center);
+      entry.dirty = true;
     }
     function down(e: MouseEvent) { dragging = true; lastX = e.clientX; lastY = e.clientY; }
     function move(e: MouseEvent) {
       if (!dragging) return;
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
-      lastX = e.clientX; lastY = e.clientY;
+      lastX = e.clientX;
+      lastY = e.clientY;
       yaw -= dx * 0.005;
       pitch += dy * 0.005;
       place();
     }
     function up() { dragging = false; }
-    function wheel(e: WheelEvent) { e.preventDefault(); radius *= (1 + e.deltaY * 0.0015); radius = Math.max(maxDim * 0.5, Math.min(maxDim * 6, radius)); place(); }
-    renderer.domElement.addEventListener("mousedown", down);
+    function wheel(e: WheelEvent) {
+      e.preventDefault();
+      radius *= 1 + e.deltaY * 0.0015;
+      radius = Math.max(maxDim * 0.5, Math.min(maxDim * 6, radius));
+      place();
+    }
+    dest.addEventListener("mousedown", down);
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
-    renderer.domElement.addEventListener("wheel", wheel, { passive: false });
+    dest.addEventListener("wheel", wheel, { passive: false });
 
-    let raf: number;
-    function tick() {
-      renderer.render(scene, camera);
-      raf = requestAnimationFrame(tick);
-    }
-    tick();
-
-    function onResize() {
-      const w2 = el.clientWidth;
-      camera.aspect = w2 / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w2, h);
-    }
-    const ro = new ResizeObserver(onResize);
+    const ro = new ResizeObserver(() => {
+      entry.width = Math.max(1, el.clientWidth);
+      entry.height = height;
+      entry.dirty = true;
+    });
     ro.observe(el);
 
     return () => {
       ro.disconnect();
-      renderer.domElement.removeEventListener("mousedown", down);
+      dest.removeEventListener("mousedown", down);
       window.removeEventListener("mousemove", move);
       window.removeEventListener("mouseup", up);
-      renderer.domElement.removeEventListener("wheel", wheel);
-      cancelAnimationFrame(raf);
-      renderer.dispose();
-      el.removeChild(renderer.domElement);
+      dest.removeEventListener("wheel", wheel);
+      unregisterViewer(entry);
+      if (dest.parentNode === el) el.removeChild(dest);
+      disposeScene(scene);
     };
   }, [shape, height, degrade]);
 
