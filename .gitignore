@@ -49,8 +49,11 @@ viral-prep/
 runs/
 .env*.local
 
-# Bench artifacts (reference STEPs, candidate STEPs, python venv, caches)
-bench/_artifacts/
+# Bench artifacts: ignore reference + candidate STEP binaries, but commit the
+# rolled-up JSON so Vercel deploys can render real sweep numbers.
+bench/_artifacts/**
+!bench/_artifacts/
+!bench/_artifacts/runs.json
 bench/.venv/
 bench/__pycache__/
 bench/**/__pycache__/
