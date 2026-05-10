@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { AGENTS } from "@/lib/data/agents";
 import { CATEGORIES } from "@/lib/data/categories";
 import { TASKS } from "@/lib/data/tasks";
@@ -5,6 +7,19 @@ import { overallForUseCase, paretoFront, classifyTier } from "@/lib/data/results
 import { getAggregatesAsync, getRunsAsync } from "@/lib/data/results-db";
 import { Leaderboard, type LeaderboardRow } from "@/components/Leaderboard";
 import type { UseCase } from "@/lib/types";
+
+function dataSourceLabel() {
+  if (process.env.POSTGRES_URL) return "data source: live (postgres)";
+  try {
+    const p = path.join(process.cwd(), "bench", "_artifacts", "runs.json");
+    const raw = JSON.parse(fs.readFileSync(p, "utf-8")) as { runs: { agent_id: string; task_id: string }[] };
+    const agents = new Set(raw.runs.map((r) => r.agent_id));
+    const tasks = new Set(raw.runs.map((r) => r.task_id));
+    return `data source: live (${raw.runs.length} runs · ${agents.size} agents × ${tasks.size} tasks) · synthetic baseline for the rest`;
+  } catch {
+    return "data source: synthetic preview · see bench/README.md to wire real runs";
+  }
+}
 
 export const revalidate = 3600;
 
@@ -67,7 +82,7 @@ export default async function Home() {
           evaluated on {AGENTS.length} agents.
         </p>
         <div className="text-[11px] font-mono text-[var(--muted)]">
-          {process.env.POSTGRES_URL ? "data source: live (postgres)" : "data source: synthetic preview · see bench/README.md to wire real runs"}
+          {dataSourceLabel()}
         </div>
       </section>
 

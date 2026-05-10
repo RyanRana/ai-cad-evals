@@ -14,13 +14,14 @@ ADAPTERS: list[Adapter] = []
 
 # Adapters self-register only if their key is present, so a partial-key
 # environment yields a partial sweep instead of a crash.
-def register_available() -> list[Adapter]:
+def register_available(skip: set[str] | None = None) -> list[Adapter]:
     from ..config import ANTHROPIC_API_KEY, OPENAI_API_KEY, ZOO_API_KEY
+    skip = skip or set()
     out: list[Adapter] = []
-    if ANTHROPIC_API_KEY:
+    if ANTHROPIC_API_KEY and "anthropic" not in skip:
         out.append(AnthropicCadQuery())
-    if OPENAI_API_KEY:
+    if OPENAI_API_KEY and "openai" not in skip:
         out.append(OpenAICadQuery())
-    if ZOO_API_KEY:
+    if ZOO_API_KEY and "zoo" not in skip:
         out.append(ZooTextToCAD())
     return out

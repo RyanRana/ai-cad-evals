@@ -1,9 +1,65 @@
-// DB-backed aggregates with a graceful fallback to the synthetic generator.
-// Active when POSTGRES_URL is set AND the `aggregates` table has rows.
+// Data-source resolution order, highest priority first:
+//   1. Postgres `aggregates` / `runs` tables (when POSTGRES_URL is set)
+//   2. bench/_artifacts/runs.json on disk (local sweep output)
+//   3. Synthetic deterministic generator in ./results (preview fallback)
+//
+// 2 lets us show real numbers from a local sweep without provisioning DB+Blob.
 
+import fs from "node:fs";
+import path from "node:path";
 import postgres from "postgres";
 import type { AggregateScore, RunResult, CategoryId, MetricId, Layer, UseCase } from "../types";
-import { getAggregates as syntheticAggregates, getRuns as syntheticRuns } from "./results";
+import { getAggregates as syntheticAggregates, getRuns as syntheticRuns, aggregate as aggregateRuns } from "./results";
+
+const RUNS_JSON_PATH = path.join(process.cwd(), "bench", "_artifacts", "runs.json");
+
+type JsonRun = {
+  agent_id: string; task_id: string; seed: number;
+  finished_at: string;
+  latency_ms: number; cost_usd: number;
+  candidate_blob: string | null; error: string | null;
+  metrics: Record<string, number | boolean | null>;
+};
+
+let _jsonCache: { mtimeMs: number; runs: RunResult[] } | null = null;
+function loadJsonRuns(): RunResult[] | null {
+  try {
+    const stat = fs.statSync(RUNS_JSON_PATH);
+    if (_jsonCache && _jsonCache.mtimeMs === stat.mtimeMs) return _jsonCache.runs;
+    const raw = JSON.parse(fs.readFileSync(RUNS_JSON_PATH, "utf-8")) as { runs: JsonRun[] };
+    const runs: RunResult[] = raw.runs.map((r) => ({
+      agentId: r.agent_id,
+      taskId: r.task_id,
+      seed: r.seed,
+      timestamp: r.finished_at,
+      latencyMs: r.latency_ms,
+      costUsd: Number(r.cost_usd),
+      metrics: r.metrics as Partial<Record<MetricId, number | boolean | null>>,
+      error: r.error ?? undefined,
+    }));
+    _jsonCache = { mtimeMs: stat.mtimeMs, runs };
+    return runs;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Merge real bench runs over the synthetic baseline, keyed by (agentId,
+ * taskId, seed). The synthetic data gives every (agent, task) cell a value;
+ * any cell with a real run wins. As coverage grows, real data crowds out
+ * synthetic until none is left.
+ */
+function mergedRuns(): RunResult[] | null {
+  const real = loadJsonRuns();
+  if (!real || real.length === 0) return null;
+  const synthetic = syntheticRuns();
+  const key = (r: RunResult) => `${r.agentId}|${r.taskId}|${r.seed}`;
+  const map = new Map<string, RunResult>();
+  for (const r of synthetic) map.set(key(r), r);
+  for (const r of real) map.set(key(r), r);
+  return [...map.values()];
+}
 
 let _sql: ReturnType<typeof postgres> | null | undefined;
 function sql() {
@@ -16,7 +72,11 @@ function sql() {
 
 export async function getAggregatesAsync(): Promise<AggregateScore[]> {
   const s = sql();
-  if (!s) return syntheticAggregates();
+  if (!s) {
+    const merged = mergedRuns();
+    if (merged) return aggregateRuns(merged);
+    return syntheticAggregates();
+  }
   try {
     const rows = await s<Array<{
       agent_id: string; category: string; n: number;
@@ -43,7 +103,10 @@ export async function getAggregatesAsync(): Promise<AggregateScore[]> {
 
 export async function getRunsAsync(): Promise<RunResult[]> {
   const s = sql();
-  if (!s) return syntheticRuns();
+  if (!s) {
+    const merged = mergedRuns();
+    return merged ?? syntheticRuns();
+  }
   try {
     const rows = await s<Array<{
       id: number; agent_id: string; task_id: string; seed: number;

@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.table import Table
 
 from .reference import REFERENCES
-from .config import REFERENCE_DIR
+from .config import REFERENCE_DIR, POSTGRES_URL, BLOB_READ_WRITE_TOKEN
 from . import db, blob
 
 con = Console()
@@ -71,22 +71,26 @@ def main(argv: list[str] | None = None):
             con.print(f"[red]author-failed[/] {tid}: {e}")
             continue
         sha = blob.sha256(res["step_path"])
-        try:
-            url = blob.upload(res["step_path"], key=f"reference/{tid}.step",
-                              content_type="application/STEP")
-        except Exception as e:
-            con.print(f"[yellow]blob-skipped[/] {tid}: {e}")
+        if BLOB_READ_WRITE_TOKEN:
+            try:
+                url = blob.upload(res["step_path"], key=f"reference/{tid}.step",
+                                  content_type="application/STEP")
+            except Exception as e:
+                con.print(f"[yellow]blob-skipped[/] {tid}: {e}")
+                url = f"file://{res['step_path']}"
+        else:
             url = f"file://{res['step_path']}"
-        try:
-            db.upsert_reference(
-                tid, blob_url=url, sha256=sha,
-                volume_mm3=res["volume_mm3"], surface_mm2=res["surface_mm2"],
-                bbox_mm=res["bbox_mm"], watertight=res["watertight"],
-                manifold=res["manifold"], euler=res["euler"], genus=res["genus"],
-                builder_version=bv,
-            )
-        except Exception as e:
-            con.print(f"[yellow]db-skipped[/] {tid}: {e}")
+        if POSTGRES_URL:
+            try:
+                db.upsert_reference(
+                    tid, blob_url=url, sha256=sha,
+                    volume_mm3=res["volume_mm3"], surface_mm2=res["surface_mm2"],
+                    bbox_mm=res["bbox_mm"], watertight=res["watertight"],
+                    manifold=res["manifold"], euler=res["euler"], genus=res["genus"],
+                    builder_version=bv,
+                )
+            except Exception as e:
+                con.print(f"[yellow]db-skipped[/] {tid}: {e}")
         table.add_row(tid, f"{res['volume_mm3']:.0f}", f"{res['surface_mm2']:.0f}",
                       "×".join(f"{x:.1f}" for x in res["bbox_mm"]), url[:60] + "…")
     con.print(table)

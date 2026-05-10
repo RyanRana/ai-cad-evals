@@ -1,9 +1,9 @@
-"""Postgres helpers."""
+"""Postgres helpers. `psycopg` is imported lazily so the bench can run
+end-to-end without a database (and without forcing the heavy install)."""
 from __future__ import annotations
 import json
 from contextlib import contextmanager
 from pathlib import Path
-import psycopg
 
 from .config import POSTGRES_URL
 
@@ -12,6 +12,7 @@ from .config import POSTGRES_URL
 def conn():
     if not POSTGRES_URL:
         raise RuntimeError("POSTGRES_URL not set")
+    import psycopg  # lazy
     with psycopg.connect(POSTGRES_URL) as c:
         yield c
 

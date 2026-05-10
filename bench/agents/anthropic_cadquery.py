@@ -9,24 +9,26 @@ from ._cadquery_runner import CADQUERY_PROMPT, extract_python, execute_cadquery_
 
 class AnthropicCadQuery:
     id = "claude-opus-4-7-cadquery"
-    name = "Claude Opus 4.7 + CadQuery"
+    name = "Claude Opus 4.7 + build123d"
     runtime = "LLM+CadQuery"
-    model = "claude-opus-4-5"  # latest available; user can override
+    model = "claude-sonnet-4-5"  # cheap default; override via $BENCH_ANTHROPIC_MODEL or subclass
     # Cost per 1k tokens (approx, USD); update as Anthropic publishes.
-    in_per_1k = 0.015
-    out_per_1k = 0.075
+    in_per_1k = 0.003
+    out_per_1k = 0.015
 
     def run(self, task_id: str, prompt: str, seed: int, out_dir: Path) -> AgentResult:
+        import os
         from ..config import ANTHROPIC_API_KEY
         from anthropic import Anthropic
         client = Anthropic(api_key=ANTHROPIC_API_KEY)
         body = CADQUERY_PROMPT.format(prompt=prompt)
+        model = os.environ.get("BENCH_ANTHROPIC_MODEL", self.model)
         t0 = time.time()
         try:
             resp = client.messages.create(
-                model=self.model,
+                model=model,
                 max_tokens=2048,
-                temperature=0.0,  # deterministic ish; seed unused by API but logged
+                temperature=0.0,
                 messages=[{"role": "user", "content": body}],
             )
         except Exception as e:

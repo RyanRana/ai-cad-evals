@@ -1,9 +1,10 @@
 """Run the full sweep: every adapter × every task × every seed.
 
 Usage:
-    python -m bench.run                     # full sweep (with available keys)
-    python -m bench.run --tasks PRIM-001    # subset
+    python -m bench.run                          # full sweep (with available keys)
+    python -m bench.run --tasks PRIM-001         # subset
     python -m bench.run --agents zoo-text-to-cad-2.4
+    python -m bench.run --skip openai --no-db    # local sweep, JSON only
 """
 from __future__ import annotations
 import argparse
@@ -81,13 +82,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", nargs="*", default=None)
     ap.add_argument("--agents", nargs="*", default=None)
+    ap.add_argument("--skip", nargs="*", default=[], help="provider names to skip: anthropic openai zoo")
     ap.add_argument("--seeds", type=int, default=DEFAULT_SEEDS)
     ap.add_argument("--no-db", action="store_true", help="skip Postgres writes")
+    ap.add_argument("--emit-json", default=str((Path(__file__).parent / "_artifacts" / "runs.json")),
+                    help="path to write a JSON snapshot of all runs (default bench/_artifacts/runs.json)")
     args = ap.parse_args()
 
     bv = bench_version()
     prompts = load_prompts()
-    adapters = register_available()
+    adapters = register_available(skip=set(args.skip))
     if args.agents:
         adapters = [a for a in adapters if a.id in set(args.agents)]
     if not adapters:
@@ -98,6 +102,7 @@ def main():
 
     con.print(f"[green]bench {bv}[/] · {len(adapters)} agents × {len(targets)} tasks × {args.seeds} seeds = {len(adapters)*len(targets)*args.seeds} runs")
 
+    json_runs: list[dict] = []
     with Progress() as bar:
         task = bar.add_task("sweep", total=len(adapters) * len(targets) * args.seeds)
         for adapter in adapters:
@@ -113,9 +118,9 @@ def main():
                 for seed in range(args.seeds):
                     out_dir = CANDIDATES_DIR / adapter.id / tid
                     out_dir.mkdir(parents=True, exist_ok=True)
-                    started = dt.datetime.utcnow()
+                    started = dt.datetime.now(dt.timezone.utc)
                     res = adapter.run(tid, prompt, seed, out_dir)
-                    finished = dt.datetime.utcnow()
+                    finished = dt.datetime.now(dt.timezone.utc)
                     metrics = score_run(ref_step, res.step_path)
                     cand_url = None
                     if res.step_path and not args.no_db:
@@ -140,7 +145,22 @@ def main():
                             con.log(f"db write failed: {e}")
                     status = "ok" if metrics["pass_at_1"] else "fail"
                     con.log(f"[{status}] {adapter.id} {tid} s{seed} vol_iou={metrics['vol_iou']:.3f} {res.error or ''}")
+                    json_runs.append({
+                        "agent_id": adapter.id, "task_id": tid, "seed": seed,
+                        "bench_version": bv,
+                        "started_at": started.isoformat() + "Z",
+                        "finished_at": finished.isoformat() + "Z",
+                        "latency_ms": res.latency_ms, "cost_usd": res.cost_usd,
+                        "candidate_blob": cand_url, "error": res.error,
+                        "metrics": metrics,
+                    })
                     bar.update(task, advance=1)
+
+    if args.emit_json:
+        out = Path(args.emit_json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps({"version": bv, "runs": json_runs}, indent=2, default=str))
+        con.print(f"[green]wrote {len(json_runs)} runs → {out}[/]")
 
 
 if __name__ == "__main__":
