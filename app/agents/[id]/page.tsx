@@ -9,6 +9,7 @@ import { MetricCell } from "@/components/MetricCell";
 import { LayerRadar } from "@/components/LayerRadar";
 import { TierBadge } from "@/components/TierBadge";
 import { METRICS, metricsByLayer } from "@/lib/data/metrics";
+import { BackLink } from "@/components/BackLink";
 
 export function generateStaticParams() {
   return AGENTS.map((a) => ({ id: a.id }));
@@ -34,7 +35,7 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
   return (
     <div className="space-y-10">
       <header className="space-y-2">
-        <Link href="/agents" className="text-xs text-[var(--muted)] hover:underline underline-offset-4">← all agents</Link>
+        <BackLink href="/agents" className="text-xs text-[var(--muted)] hover:underline underline-offset-4">← back</BackLink>
         <div className="flex items-baseline justify-between flex-wrap gap-3">
           <div className="flex items-baseline gap-3 flex-wrap">
             <h1 className="text-2xl tracking-tight">{agent.name}</h1>

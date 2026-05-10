@@ -9,6 +9,7 @@ import { CadViewer } from "@/components/CadViewer";
 import { MetricCell } from "@/components/MetricCell";
 import { METRICS } from "@/lib/data/metrics";
 import { degradeForAgent, brepFidelityForAgent } from "@/lib/data/agent-degrade";
+import { BackLink } from "@/components/BackLink";
 
 export function generateStaticParams() {
   return TASKS.map((t) => ({ id: t.id }));
@@ -30,7 +31,7 @@ export default async function TaskDetail({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-12">
       <header className="space-y-3 border-b pb-8">
-        <Link href="/tasks" className="text-[11px] font-mono link">← all tasks</Link>
+        <BackLink href="/tasks" className="text-[11px] font-mono link">← back</BackLink>
         <div className="flex items-end justify-between flex-wrap gap-3">
           <div className="space-y-2">
             <div className="eyebrow">

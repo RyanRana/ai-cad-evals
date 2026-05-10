@@ -6,6 +6,7 @@ import { TASKS } from "@/lib/data/tasks";
 import { metricById } from "@/lib/data/metrics";
 import { getAggregates } from "@/lib/data/results";
 import { ScoreBar } from "@/components/ScoreBar";
+import { BackLink } from "@/components/BackLink";
 
 export function generateStaticParams() {
   return CATEGORIES.map((c) => ({ id: c.id }));
@@ -21,7 +22,7 @@ export default async function CategoryDetail({ params }: { params: Promise<{ id:
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <Link href="/categories" className="text-xs text-[var(--muted)] hover:underline underline-offset-4">← all categories</Link>
+        <BackLink href="/categories" className="text-xs text-[var(--muted)] hover:underline underline-offset-4">← back</BackLink>
         <h1 className="text-2xl tracking-tight">{cat.name}</h1>
         <p className="text-[var(--muted)] text-sm leading-relaxed max-w-3xl">{cat.description}</p>
         <div className="flex flex-wrap gap-2 pt-2">

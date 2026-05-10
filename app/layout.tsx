@@ -22,6 +22,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </Link>
             <nav className="flex items-center gap-6 text-[14px] text-[var(--muted)]">
               <Link href="/" className="hover:text-[var(--foreground)]">Leaderboard</Link>
+              <Link href="/tasks" className="hover:text-[var(--foreground)]">Side-by-side</Link>
               <Link href="/playground" className="hover:text-[var(--foreground)]">Playground</Link>
               <Link href="/docs" className="hover:text-[var(--foreground)]">Documentation</Link>
             </nav>
