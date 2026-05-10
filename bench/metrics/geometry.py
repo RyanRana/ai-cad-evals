@@ -41,13 +41,20 @@ def _load_mesh(path: Path) -> trimesh.Trimesh:
     return m
 
 
+MAX_VOXELS = 500_000  # cap to keep scoring time per task ~10s
+
+
 def vol_iou(ref_path: Path, cand_path: Path, voxel_pitch: float | None = None) -> float:
-    """Volumetric IoU via voxelization. Auto-pick pitch from bbox diagonal."""
+    """Volumetric IoU via voxelization. Auto-pick pitch from bbox; cap voxels."""
     R = _load_mesh(ref_path)
     C = _load_mesh(cand_path)
     if voxel_pitch is None:
         diag = float(np.linalg.norm(R.bounding_box.extents))
         voxel_pitch = max(0.25, diag / 200.0)
+    # cap by axis-aligned voxel count
+    extents = R.bounding_box.extents
+    while np.prod(extents / voxel_pitch) > MAX_VOXELS:
+        voxel_pitch *= 1.5
     rv = R.voxelized(pitch=voxel_pitch).fill()
     cv = C.voxelized(pitch=voxel_pitch).fill()
     # align grids: project both onto a common origin/extent
