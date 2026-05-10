@@ -36,10 +36,10 @@ class ZooTextToCAD:
                 job = r.json()
                 job_id = job.get("id") or job.get("uuid")
                 # poll
-                deadline = time.time() + 240
+                deadline = time.time() + 600  # Zoo can take 5+ min on harder prompts
                 status = "queued"
                 while time.time() < deadline and status not in ("completed", "failed"):
-                    time.sleep(3)
+                    time.sleep(4)
                     p = cli.get(f"{self.base}/user/text-to-cad/{job_id}", headers=headers)
                     p.raise_for_status()
                     job = p.json()

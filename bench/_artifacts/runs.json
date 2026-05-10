@@ -1,0 +1,212 @@
+{
+  "version": "09fa437",
+  "runs": [
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-001",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:05:05.244830+00:00Z",
+      "finished_at": "2026-05-10T12:05:09.827884+00:00Z",
+      "latency_ms": 2482,
+      "cost_usd": 0.002661,
+      "candidate_blob": null,
+      "error": null,
+      "metrics": {
+        "vol_iou": 1.0,
+        "chamfer": 0.35455644322904656,
+        "hausdorff": 0.6498340078799484,
+        "normal_consistency": 0.9945592817254658,
+        "watertight": true,
+        "manifold": true,
+        "euler_compliance": true,
+        "step_roundtrip": 0.7380663560858618,
+        "pass_at_1": 1.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-002",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:05:22.885687+00:00Z",
+      "finished_at": "2026-05-10T12:05:29.448612+00:00Z",
+      "latency_ms": 4580,
+      "cost_usd": 0.003594,
+      "candidate_blob": null,
+      "error": null,
+      "metrics": {
+        "vol_iou": 1.0,
+        "chamfer": 0.16754631919156215,
+        "hausdorff": 0.308341961818598,
+        "normal_consistency": 0.9991979491644977,
+        "watertight": false,
+        "manifold": false,
+        "euler_compliance": true,
+        "step_roundtrip": 0.8569861464305817,
+        "pass_at_1": 0.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-003",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:05:31.050108+00:00Z",
+      "finished_at": "2026-05-10T12:05:39.177750+00:00Z",
+      "latency_ms": 6486,
+      "cost_usd": 0.00477,
+      "candidate_blob": null,
+      "error": null,
+      "metrics": {
+        "vol_iou": 0.9996723762412787,
+        "chamfer": 0.19902333073797857,
+        "hausdorff": 0.36466552249574213,
+        "normal_consistency": 0.9965568151512012,
+        "watertight": true,
+        "manifold": true,
+        "euler_compliance": true,
+        "step_roundtrip": 0.8340646952494962,
+        "pass_at_1": 1.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-004",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:05:41.012834+00:00Z",
+      "finished_at": "2026-05-10T12:05:47.724866+00:00Z",
+      "latency_ms": 5051,
+      "cost_usd": 0.004032,
+      "candidate_blob": null,
+      "error": "Traceback (most recent call last):\n  File \"/private/var/folders/v2/wtt0f76x36z7cplxrkmqdkdm0000gn/T/tmp4ah99j9i/user.py\", line 16, in <module>\n    extrude(amount=0)\n  File \"/Users/ryanrana/Downloads/EVALS FOR AI CADS/bench/.venv/lib/python3.12/site-packages/build123d/operations_part.py\", line 198, in extrude\n    Solid.extrude(\n  File \"/Users/ryanrana/Downloads/EVALS FOR AI CADS/bench/.venv/lib/python3.12/site-packages/build123d/topology/three_d.py\", line 688, in extrude\n    return Solid(TopoDS.Solid_s(_extrude_topods_shape(obj.wrapped, direction)))\n                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ryanrana/Downloads/EVALS FOR AI CADS/bench/.venv/lib/python3.12/site-packages/build123d/topology/utils.py\", line 124, in _extrude_topods_shape\n    prism_builder = BRepPrimAPI_MakePrism(obj, direction.wrapped)\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nOCP.OCP.Standard.Standard_Failure: BRepSweep_Translation::Constructor\n",
+      "metrics": {
+        "vol_iou": 0.0,
+        "chamfer": null,
+        "hausdorff": null,
+        "normal_consistency": 0.0,
+        "watertight": false,
+        "manifold": false,
+        "euler_compliance": false,
+        "step_roundtrip": 0.0,
+        "pass_at_1": 0.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-005",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:05:47.727407+00:00Z",
+      "finished_at": "2026-05-10T12:05:52.864077+00:00Z",
+      "latency_ms": 3509,
+      "cost_usd": 0.0029609999999999997,
+      "candidate_blob": null,
+      "error": null,
+      "metrics": {
+        "vol_iou": 1.0,
+        "chamfer": 0.24112807352105253,
+        "hausdorff": 0.4443968351562357,
+        "normal_consistency": 0.99222,
+        "watertight": true,
+        "manifold": true,
+        "euler_compliance": true,
+        "step_roundtrip": 0.8062323812292637,
+        "pass_at_1": 1.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-007",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:05:54.460605+00:00Z",
+      "finished_at": "2026-05-10T12:06:01.785424+00:00Z",
+      "latency_ms": 5783,
+      "cost_usd": 0.003941999999999999,
+      "candidate_blob": null,
+      "error": "Traceback (most recent call last):\n  File \"/private/var/folders/v2/wtt0f76x36z7cplxrkmqdkdm0000gn/T/tmpm6ohn00i/user.py\", line 6, in <module>\n    RegularPolygon(radius=24/2/cos(30), side_count=6, rotation=0)\n                               ^^^\nNameError: name 'cos' is not defined. Did you mean: 'Pos'?\n",
+      "metrics": {
+        "vol_iou": 0.0,
+        "chamfer": null,
+        "hausdorff": null,
+        "normal_consistency": 0.0,
+        "watertight": false,
+        "manifold": false,
+        "euler_compliance": false,
+        "step_roundtrip": 0.0,
+        "pass_at_1": 0.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "PRIM-009",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:06:01.786623+00:00Z",
+      "finished_at": "2026-05-10T12:06:07.361493+00:00Z",
+      "latency_ms": 3934,
+      "cost_usd": 0.004029,
+      "candidate_blob": null,
+      "error": null,
+      "metrics": {
+        "vol_iou": 1.0,
+        "chamfer": 0.2240238115527026,
+        "hausdorff": 0.4107672422233087,
+        "normal_consistency": 0.9978175642876074,
+        "watertight": true,
+        "manifold": true,
+        "euler_compliance": true,
+        "step_roundtrip": 0.8170757704893191,
+        "pass_at_1": 1.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "BOOL-003",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:06:12.250699+00:00Z",
+      "finished_at": "2026-05-10T12:06:19.506075+00:00Z",
+      "latency_ms": 5240,
+      "cost_usd": 0.004875,
+      "candidate_blob": null,
+      "error": "Traceback (most recent call last):\n  File \"/private/var/folders/v2/wtt0f76x36z7cplxrkmqdkdm0000gn/T/tmp_hq4jb87/user.py\", line 21, in <module>\n    result = fillet(edges_to_fillet, radius=1)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Users/ryanrana/Downloads/EVALS FOR AI CADS/bench/.venv/lib/python3.12/site-packages/build123d/operations_generic.py\", line 429, in fillet\n    target = object_list[0].topo_parent\n             ~~~~~~~~~~~^^^\n  File \"/Users/ryanrana/Downloads/EVALS FOR AI CADS/bench/.venv/lib/python3.12/site-packages/build123d/topology/shape_core.py\", line 2403, in __getitem__\n    return list(self).__getitem__(key)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nIndexError: list index out of range\n",
+      "metrics": {
+        "vol_iou": 0.0,
+        "chamfer": null,
+        "hausdorff": null,
+        "normal_consistency": 0.0,
+        "watertight": false,
+        "manifold": false,
+        "euler_compliance": false,
+        "step_roundtrip": 0.0,
+        "pass_at_1": 0.0
+      }
+    },
+    {
+      "agent_id": "claude-opus-4-7-cadquery",
+      "task_id": "BREP-004",
+      "seed": 0,
+      "bench_version": "09fa437",
+      "started_at": "2026-05-10T12:06:19.508794+00:00Z",
+      "finished_at": "2026-05-10T12:06:34.329996+00:00Z",
+      "latency_ms": 12893,
+      "cost_usd": 0.010872000000000001,
+      "candidate_blob": null,
+      "error": "Traceback (most recent call last):\n  File \"/private/var/folders/v2/wtt0f76x36z7cplxrkmqdkdm0000gn/T/tmpwch26z37/user.py\", line 24, in <module>\n    cup_curve = Spline(*cup_profile_points, degree=3)\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nTypeError: Spline.__init__() got an unexpected keyword argument 'degree'\n",
+      "metrics": {
+        "vol_iou": 0.0,
+        "chamfer": null,
+        "hausdorff": null,
+        "normal_consistency": 0.0,
+        "watertight": false,
+        "manifold": false,
+        "euler_compliance": false,
+        "step_roundtrip": 0.0,
+        "pass_at_1": 0.0
+      }
+    }
+  ]
+}
