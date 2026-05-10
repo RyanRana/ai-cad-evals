@@ -4,9 +4,11 @@ import { CATEGORIES, categoryById } from "@/lib/data/categories";
 import { AGENTS } from "@/lib/data/agents";
 import { TASKS } from "@/lib/data/tasks";
 import { metricById } from "@/lib/data/metrics";
-import { getAggregates } from "@/lib/data/results";
+import { getAggregatesAsync } from "@/lib/data/results-db";
 import { ScoreBar } from "@/components/ScoreBar";
 import { BackLink } from "@/components/BackLink";
+
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return CATEGORIES.map((c) => ({ id: c.id }));
@@ -16,7 +18,7 @@ export default async function CategoryDetail({ params }: { params: Promise<{ id:
   const { id } = await params;
   const cat = categoryById(id);
   if (!cat) return notFound();
-  const aggs = getAggregates().filter((a) => a.category === cat.id).sort((a, b) => b.meanScore - a.meanScore);
+  const aggs = (await getAggregatesAsync()).filter((a) => a.category === cat.id).sort((a, b) => b.meanScore - a.meanScore);
   const ts = TASKS.filter((t) => t.category === cat.id);
 
   return (

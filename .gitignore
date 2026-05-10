@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -46,3 +47,11 @@ viral-prep/
 
 # Local benchmark sweep outputs
 runs/
+.env*.local
+
+# Bench artifacts (reference STEPs, candidate STEPs, python venv, caches)
+bench/_artifacts/
+bench/.venv/
+bench/__pycache__/
+bench/**/__pycache__/
+*.pyc

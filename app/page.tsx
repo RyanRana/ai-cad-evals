@@ -1,13 +1,16 @@
 import { AGENTS } from "@/lib/data/agents";
 import { CATEGORIES } from "@/lib/data/categories";
 import { TASKS } from "@/lib/data/tasks";
-import { getAggregates, getRuns, overallForUseCase, paretoFront, classifyTier } from "@/lib/data/results";
+import { overallForUseCase, paretoFront, classifyTier } from "@/lib/data/results";
+import { getAggregatesAsync, getRunsAsync } from "@/lib/data/results-db";
 import { Leaderboard, type LeaderboardRow } from "@/components/Leaderboard";
 import type { UseCase } from "@/lib/types";
 
-export default function Home() {
-  const aggregates = getAggregates();
-  const runs = getRuns();
+export const revalidate = 3600;
+
+export default async function Home() {
+  const aggregates = await getAggregatesAsync();
+  const runs = await getRunsAsync();
 
   const useCases: UseCase[] = ["production", "exploration", "hobbyist"];
   const ucScores = Object.fromEntries(useCases.map((uc) => [uc, overallForUseCase(runs, uc)])) as Record<UseCase, ReturnType<typeof overallForUseCase>>;
@@ -63,6 +66,9 @@ export default function Home() {
           An open benchmark for AI CAD agents. {TASKS.length} tasks across {CATEGORIES.length} categories,
           evaluated on {AGENTS.length} agents.
         </p>
+        <div className="text-[11px] font-mono text-[var(--muted)]">
+          {process.env.POSTGRES_URL ? "data source: live (postgres)" : "data source: synthetic preview · see bench/README.md to wire real runs"}
+        </div>
       </section>
 
       <section>

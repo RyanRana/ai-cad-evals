@@ -3,13 +3,16 @@ import { notFound } from "next/navigation";
 import { AGENTS, agentById } from "@/lib/data/agents";
 import { TASKS } from "@/lib/data/tasks";
 import { CATEGORIES } from "@/lib/data/categories";
-import { getAggregates, getRuns, classifyTier } from "@/lib/data/results";
+import { getAggregatesAsync, getRunsAsync } from "@/lib/data/results-db";
+import { classifyTier } from "@/lib/data/results";
 import { CategoryBars } from "@/components/CategoryBars";
 import { MetricCell } from "@/components/MetricCell";
 import { LayerRadar } from "@/components/LayerRadar";
 import { TierBadge } from "@/components/TierBadge";
 import { METRICS, metricsByLayer } from "@/lib/data/metrics";
 import { BackLink } from "@/components/BackLink";
+
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return AGENTS.map((a) => ({ id: a.id }));
@@ -19,12 +22,13 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const agent = agentById(id);
   if (!agent) return notFound();
-  const aggregates = getAggregates().filter((a) => a.agentId === agent.id);
+  const allAggregates = await getAggregatesAsync();
+  const aggregates = allAggregates.filter((a) => a.agentId === agent.id);
   const overall = aggregates.find((a) => a.category === "overall")!;
-  const tier = classifyTier(agent.id, getAggregates());
-  const runs = getRuns().filter((r) => r.agentId === agent.id);
+  const tier = classifyTier(agent.id, allAggregates);
+  const runs = (await getRunsAsync()).filter((r) => r.agentId === agent.id);
 
-  const human = getAggregates().filter((a) => a.agentId === "human-mechE");
+  const human = allAggregates.filter((a) => a.agentId === "human-mechE");
   const layers = ["L1_geometry", "L2_engineering", "L3_manufacturing", "L4_cognition"] as const;
   const layerVals = layers.map((lay) => {
     const a = aggregates.find((x) => x.category === lay)!;

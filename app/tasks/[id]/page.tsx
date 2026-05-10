@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import { TASKS, taskById } from "@/lib/data/tasks";
 import { AGENTS } from "@/lib/data/agents";
 import { categoryById } from "@/lib/data/categories";
-import { getRuns } from "@/lib/data/results";
+import { getRunsAsync } from "@/lib/data/results-db";
 import { TASK_SHAPES } from "@/lib/data/shapes";
 import { CadViewer } from "@/components/CadViewer";
 import { MetricCell } from "@/components/MetricCell";
 import { METRICS } from "@/lib/data/metrics";
 import { degradeForAgent, brepFidelityForAgent } from "@/lib/data/agent-degrade";
 import { BackLink } from "@/components/BackLink";
+
+export const revalidate = 3600;
 
 export function generateStaticParams() {
   return TASKS.map((t) => ({ id: t.id }));
@@ -20,7 +22,7 @@ export default async function TaskDetail({ params }: { params: Promise<{ id: str
   const task = taskById(id);
   if (!task) return notFound();
   const cat = categoryById(task.category)!;
-  const runs = getRuns().filter((r) => r.taskId === task.id);
+  const runs = (await getRunsAsync()).filter((r) => r.taskId === task.id);
   const shape = TASK_SHAPES[task.id];
 
   const ranked = AGENTS.map((a) => {

@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { AGENTS } from "@/lib/data/agents";
-import { getAggregates, classifyTier } from "@/lib/data/results";
+import { classifyTier } from "@/lib/data/results";
+import { getAggregatesAsync } from "@/lib/data/results-db";
 import { ScoreBar } from "@/components/ScoreBar";
 import { TierBadge } from "@/components/TierBadge";
 
-export default function AgentsIndex() {
-  const aggregates = getAggregates();
+export const revalidate = 3600;
+
+export default async function AgentsIndex() {
+  const aggregates = await getAggregatesAsync();
   const rows = AGENTS.map((a) => ({
     agent: a,
     tier: classifyTier(a.id, aggregates),
